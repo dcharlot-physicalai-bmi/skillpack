@@ -11,12 +11,17 @@ registry (17 hardware targets). Strategy: `../docs/AGENTIC-PHYSICAL-AI-ECOSYSTEM
 
 ## Try it
 
+Install skills from the **hosted registry** — no clone needed, from anywhere:
+
 ```bash
-node bin/skillpack.mjs list                    # browse the registry
-node bin/skillpack.mjs init --robot so101      # scaffold ./robot.json (your capability manifest)
-node bin/skillpack.mjs check arm-reach         # will it run on your robot?
-node bin/skillpack.mjs add arm-reach           # capability-gated install-as-source
+R=https://physicalai-bmi.org/assets/skillpack
+node bin/skillpack.mjs list                 --registry $R   # browse the hosted registry
+node bin/skillpack.mjs init --robot so101   --registry $R   # scaffold ./robot.json (your capability manifest)
+node bin/skillpack.mjs check arm-reach      --registry $R   # will it run on your robot?
+node bin/skillpack.mjs add arm-reach        --registry $R   # capability-gated install-as-source, over HTTP
 ```
+
+(Omit `--registry` to use this repo's local tree.)
 
 The install is **capability-gated** — the twist only robots need. `skillpack add` checks the skill against
 your `robot.json` and **refuses (with reasons)** if it won't run, so you never install a skill your body
