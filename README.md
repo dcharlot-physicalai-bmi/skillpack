@@ -60,5 +60,18 @@ node verify-flywheel.mjs # the WHOLE registry (analytic · vla · lerobot) stays
 node verify-spec.mjs     # every skill.json + registry conform to the JSON schemas (no drift)
 ```
 
-All three run with no robot and no GPU (SmolVLA's 450M weights run in-browser on WebGPU; the Node harness
+All run with no robot and no GPU (SmolVLA's 450M weights run in-browser on WebGPU; the Node harness
 validates the contract + safety wrapping with a stand-in forward pass).
+
+### Weight-verified (real LeRobot checkpoint)
+
+```
+npm run setup:lerobot     # python3.13 venv + pip install lerobot  (needs Python >= 3.12)
+npm run test:real         # drives a skill with a REAL lerobot ACT checkpoint through the envelope
+```
+
+`verify-bridge-real.mjs` loads `lerobot/act_aloha_sim_transfer_cube_human`, pulls a real 14-dim action out
+of `.select_action()` each tick, and runs it through the skillpack safety envelope to a valid wire packet.
+The real actions fall **outside** [0,1] (a checkpoint not trained for this arm) — and the runtime **bounds
+them**: valid wire, in range, within the velocity cap. That is the safety guarantee, verified on real
+weights. `npm run test:real` auto-skips cleanly if the lerobot venv isn't present.

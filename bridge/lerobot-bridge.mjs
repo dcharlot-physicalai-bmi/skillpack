@@ -9,8 +9,9 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-export function connectLeRobot(checkpoint = 'mock', { python = 'python3' } = {}) {
-  const proc = spawn(python, [resolve(HERE, 'lerobot_server.py'), '--checkpoint', checkpoint], { stdio: ['pipe', 'pipe', 'pipe'] });
+export function connectLeRobot(checkpoint = 'mock', { python = 'python3', policyType = 'act' } = {}) {
+  const args = [resolve(HERE, 'lerobot_server.py'), '--checkpoint', checkpoint, '--policy-type', policyType];
+  const proc = spawn(python, args, { stdio: ['pipe', 'pipe', 'pipe'] });
   let buf = '';
   const waiters = [];
   proc.stdout.on('data', (d) => {
