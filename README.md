@@ -33,6 +33,8 @@ envelope hold.
 | `SPEC.md` | the open skill-package format (v0.1) |
 | `skillcore.mjs` | pure logic — validate · **capability negotiation** · **safety envelope** (one source of truth) |
 | `skillkit.mjs` | the Node runtime — loader, transport binding to `hwbridge`, `bind()` |
+| `evalkit.mjs` | recovery-aware evaluation — closed-loop dynamics + disturbances → success, recovery, stability, failure taxonomy |
+| `durable.mjs` | durable execution — checkpoint per waypoint, resume-without-redo, progress-aware rollback, HITL suspend |
 | `bin/skillpack.mjs` | the CLI — `list · init · check · add · verify` |
 | `registry.json` | the registry index (skills + sample robots) |
 | `policies/lerobot.mjs` | shared adapter — drives **any** LeRobot checkpoint via `.select_action(obs)` |
@@ -58,6 +60,10 @@ node verify-vla.mjs      # the policy swap: analytic → real SmolVLA, same cont
 node verify-cli.mjs      # the CLI: list → init → check → capability-gated add → install-as-source
 node verify-flywheel.mjs # the WHOLE registry (analytic · vla · lerobot) stays inside one safety envelope
 node verify-spec.mjs     # every skill.json + registry conform to the JSON schemas (no drift)
+node verify-mcp.mjs      # the Robot MCP Profile: safety enforced in the protocol, hijack-safe
+node verify-bridge.mjs   # a real Python policy process drives a skill, bounded by the envelope
+node verify-eval.mjs     # recovery-aware eval: passes the capable, measures recovery, catches the under-capable
+node verify-durable.mjs  # durable execution: checkpoint, resume-without-redo, HITL suspend, progress-aware rollback
 ```
 
 All run with no robot and no GPU (SmolVLA's 450M weights run in-browser on WebGPU; the Node harness
