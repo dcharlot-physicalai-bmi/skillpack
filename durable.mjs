@@ -13,7 +13,8 @@ import { bind } from './skillkit.mjs';
 const maxErr = (a, b) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
 
 // Drive the world to one waypoint through the skill's safety-bounded runtime. Optional mid-drive shove.
-async function driveTo(skill, robot, world0, target, opts = {}) {
+// Exported so composite skills can reuse it to drive each sub-skill step.
+export async function driveTo(skill, robot, world0, target, opts = {}) {
   const { tol = 0.03, maxTicks = 80, alpha = 0.5, shoveAt = null, shoveMag = 0.35, policyOpts } = opts;
   const rt = await bind(skill, robot, { q0: world0.slice(), policyOpts });
   let world = world0.slice(), reached = false, ticks = 0;

@@ -35,6 +35,8 @@ envelope hold.
 | `skillkit.mjs` | the Node runtime — loader, transport binding to `hwbridge`, `bind()` |
 | `evalkit.mjs` | recovery-aware evaluation — closed-loop dynamics + disturbances → success, recovery, stability, failure taxonomy |
 | `durable.mjs` | durable execution — checkpoint per waypoint, resume-without-redo, progress-aware rollback, HITL suspend |
+| `telemetry.mjs` | auditable run-trace — records every safety intervention (hold/clamp/cap), serializable + replayable |
+| `composite.mjs` | composite skills — a skill built from registered sub-skills, gated + safety-enveloped per step, durable |
 | `bin/skillpack.mjs` | the CLI — `list · init · check · add · verify` |
 | `registry.json` | the registry index (skills + sample robots) |
 | `policies/lerobot.mjs` | shared adapter — drives **any** LeRobot checkpoint via `.select_action(obs)` |
@@ -66,6 +68,8 @@ node verify-bridge.mjs   # a real Python policy process drives a skill, bounded 
 node verify-eval.mjs     # recovery-aware eval: passes the capable, measures recovery, catches the under-capable
 node verify-durable.mjs  # durable execution: checkpoint, resume-without-redo, HITL suspend, progress-aware rollback
 node verify-mobile.mjs   # cross-morphology: a velocity mobile base under a speed/accel envelope, same contract
+node verify-telemetry.mjs # every safety intervention recorded; trace serializable + replayable
+node verify-composite.mjs # skills compose (reach → grasp → carry), gated + enveloped per step, durable
 ```
 
 All run with no robot and no GPU (SmolVLA's 450M weights run in-browser on WebGPU; the Node harness

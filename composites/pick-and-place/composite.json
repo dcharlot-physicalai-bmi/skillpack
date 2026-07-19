@@ -1,0 +1,17 @@
+{
+  "name": "pick-and-place",
+  "version": "0.1.0",
+  "title": "Pick an object and place it on the target",
+  "task": "Pick the object and place it on the target",
+  "authors": ["Institute for Physical AI @ BMI"],
+  "license": "CC-BY-4.0",
+  "summary": "A composite skill: reach to the object, close the gripper, carry to the place target. Each step is a registered skill run through its own capability gate and safety envelope; the composite checkpoints between steps so a fault mid-task resumes without redoing what's done.",
+
+  "requires": { "morphology": "arm", "min_dof": 5, "actuation": "position", "sensors": ["proprioception", "target_pose"] },
+
+  "steps": [
+    { "skill": "arm-reach",     "goal": [0.80, 0.30, 0.60, 0.40, 0.10], "note": "approach above the object, gripper open" },
+    { "skill": "gripper-grasp", "goal": [0.80, 0.30, 0.60, 0.40, 0.95], "note": "close the gripper on the object" },
+    { "skill": "arm-reach",     "goal": [0.30, 0.60, 0.50, 0.55, 0.95], "note": "carry to the place target, gripper stays closed" }
+  ]
+}

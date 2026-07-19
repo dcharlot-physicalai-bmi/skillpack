@@ -73,6 +73,7 @@ export async function bind(skill, robot, { q0, policyOpts } = {}) {
 
   return {
     target, codec, velocity,
+    envelope: { lo, hi, maxStep },   // exposed so a tracer can classify each intervention (clamp/cap/hold)
     reset(q) { prev = velocity ? new Array(dof).fill(0) : (q ? q.slice() : new Array(dof).fill(0.5)).slice(0, dof); policy.reset?.(); },
     state: () => prev.slice(),
     // one control tick: obs → policy proposal → safety envelope → normalized → wire bytes
