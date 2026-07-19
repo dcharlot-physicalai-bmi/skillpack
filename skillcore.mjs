@@ -7,7 +7,10 @@ export function validateSkill(m) {
   const missing = need.filter((k) => !(k in m));
   if (missing.length) throw new Error(`skill.json missing required field(s): ${missing.join(', ')}`);
   if (!m.requires.morphology || !m.requires.min_dof) throw new Error('requires{} needs morphology + min_dof');
-  if (typeof m.safety.max_step_norm !== 'number') throw new Error('safety.max_step_norm must be a number');
+  // position skills bound a per-tick position step; velocity skills bound speed + acceleration.
+  const posOk = typeof m.safety.max_step_norm === 'number';
+  const velOk = typeof m.safety.max_speed_norm === 'number' && typeof m.safety.max_accel_norm === 'number';
+  if (!posOk && !velOk) throw new Error('safety needs max_step_norm (position) OR max_speed_norm + max_accel_norm (velocity)');
   return true;
 }
 

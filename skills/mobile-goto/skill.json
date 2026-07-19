@@ -1,0 +1,36 @@
+{
+  "name": "mobile-goto",
+  "version": "0.1.0",
+  "title": "Drive a mobile base to a waypoint",
+  "summary": "A VELOCITY-action-space skill for a mobile base: propose a 2D velocity toward the goal, bounded by a speed + acceleration envelope. Proves the contract spans morphologies and action spaces — same negotiation, same safety principle, different bounds.",
+  "task": "Drive to the waypoint",
+  "authors": ["Institute for Physical AI @ BMI"],
+  "license": "CC-BY-4.0",
+
+  "policy": { "kind": "analytic", "ref": "./policy.mjs", "observation": ["pose", "goal"], "action": "velocity_2d" },
+
+  "requires": {
+    "morphology": "mobile",
+    "min_dof": 2,
+    "actuation": "velocity",
+    "sensors": ["odometry"],
+    "control_rate_hz": 20
+  },
+
+  "safety": {
+    "max_speed_norm": 0.6,
+    "max_accel_norm": 0.15,
+    "estop": "zero-velocity",
+    "watchdog_ms": 200
+  },
+
+  "io": { "action_space": "normalized-velocity-2d", "action_dim": "2 (vx, vy)" },
+
+  "contract": {
+    "pre": ["odometry pose available", "goal within the reachable area"],
+    "post": ["base within tolerance of the goal", "commanded speed never exceeded max_speed_norm"],
+    "invariants": ["|velocity| <= max_speed_norm", "no per-tick velocity change exceeds max_accel_norm", "no NaN reaches the driver"]
+  },
+
+  "eval": { "ref": "./eval.json", "metric": "goto_success_rate", "threshold": 0.8 }
+}

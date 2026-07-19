@@ -26,10 +26,11 @@ function lerobotBackend(dof, mode) { return { selectAction() {
   return Array.from({ length: dof }, (_, i) => mode === 'ood' ? [NaN, 9, -5, Infinity, 42][i % 5] : 0.6); } }; }
 const backendFor = (kind, dof, mode) => kind === 'vla' ? { backend: vlaBackend(mode) } : kind === 'lerobot' ? { backend: lerobotBackend(dof, mode) } : undefined;
 
-// codec-agnostic packet sanity + the safety invariant
-function okTick(t) {
+// codec-agnostic packet sanity + the safety invariant. Range depends on the action space:
+// position commands live in [0,1]; velocity commands in [-maxSpeed, maxSpeed].
+function okTick(t, range = [0, 1]) {
   const bytesOk = t.wire && t.wire.data && t.wire.data.length > 0;
-  const bounded = t.q.every((v) => Number.isFinite(v) && v >= 0 && v <= 1);
+  const bounded = t.q.every((v) => Number.isFinite(v) && v >= range[0] - 1e-9 && v <= range[1] + 1e-9);
   return bytesOk && bounded;
 }
 
@@ -44,25 +45,28 @@ for (const entry of reg.skills) {
   check('gates to a compatible robot', !!robot, robot ? robot.name : 'NONE compatible');
   if (!robot) continue;
 
-  const dof = robot.dof, maxStep = m.safety.max_step_norm;
+  const dof = robot.dof;
+  const velocity = m.requires.actuation === 'velocity';
+  const cap = velocity ? m.safety.max_accel_norm : m.safety.max_step_norm;         // accel vs position-step cap
+  const range = velocity ? [-m.safety.max_speed_norm, m.safety.max_speed_norm] : [0, 1];
   const target = Array.from({ length: dof }, (_, i) => 0.2 + 0.05 * i);
 
   // normal run
   const rt = await bind(skill, robot, { q0: new Array(dof).fill(0.5), policyOpts: backendFor(kind, dof, 'reach') });
-  let bad = false, maxSeen = 0, prev = new Array(dof).fill(0.5);
+  let bad = false, maxSeen = 0, prev = rt.state();
   for (let k = 0; k < 40; k++) {
-    const t = rt.step({ q: rt.state(), q_target: target, image: null, task: 'x', state: rt.state() });
+    const t = rt.step({ q: rt.state(), q_target: target, pose: rt.state(), goal: target, image: null, task: 'x', state: rt.state() });
     for (let i = 0; i < dof; i++) maxSeen = Math.max(maxSeen, Math.abs(t.q[i] - prev[i]));
-    prev = t.q; if (!okTick(t)) bad = true;
+    prev = t.q; if (!okTick(t, range)) bad = true;
   }
   check(`runs on ${robot.name} → valid wire + bounded (40 ticks)`, !bad);
-  check('no step exceeded the velocity cap', maxSeen <= maxStep + 1e-9, `max ${maxSeen.toFixed(3)} ≤ ${maxStep}`);
+  check(`no tick exceeded the ${velocity ? 'accel' : 'velocity'} cap`, maxSeen <= cap + 1e-9, `max ${maxSeen.toFixed(3)} ≤ ${cap}`);
 
   // adversarial (only policies with an injectable backend can be corrupted; analytic is trusted-by-construction)
   if (kind === 'vla' || kind === 'lerobot') {
     const rtO = await bind(skill, robot, { q0: new Array(dof).fill(0.5), policyOpts: backendFor(kind, dof, 'ood') });
     let obad = false;
-    for (let k = 0; k < 40; k++) { const t = rtO.step({ image: null, task: 'x', state: [] }); if (!okTick(t)) obad = true; }
+    for (let k = 0; k < 40; k++) { const t = rtO.step({ image: null, task: 'x', state: [] }); if (!okTick(t, range)) obad = true; }
     check('hijacked/OOD policy → envelope still holds', !obad);
   }
 }

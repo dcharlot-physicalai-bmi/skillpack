@@ -43,6 +43,7 @@ envelope hold.
 | `skills/gripper-grasp/` | analytic grasp — needs the gripper DoF (≥5), so it gates out 4-DoF arms |
 | `skills/arm-pick-place/` | composes a **LeRobot ACT** checkpoint (`hf://lerobot/act_so101_pickplace`) |
 | `skills/arm-stack/` | composes a **LeRobot Diffusion Policy** checkpoint — same contract, ≥6 DoF |
+| `skills/mobile-goto/` | a **velocity**-action-space skill for a mobile base — the contract spans morphologies |
 | `robots/*.json` | sample robot capability manifests |
 | `demo.html` | the live in-browser showcase (also at physicalai-bmi.org/research/skillpack) |
 
@@ -64,6 +65,7 @@ node verify-mcp.mjs      # the Robot MCP Profile: safety enforced in the protoco
 node verify-bridge.mjs   # a real Python policy process drives a skill, bounded by the envelope
 node verify-eval.mjs     # recovery-aware eval: passes the capable, measures recovery, catches the under-capable
 node verify-durable.mjs  # durable execution: checkpoint, resume-without-redo, HITL suspend, progress-aware rollback
+node verify-mobile.mjs   # cross-morphology: a velocity mobile base under a speed/accel envelope, same contract
 ```
 
 All run with no robot and no GPU (SmolVLA's 450M weights run in-browser on WebGPU; the Node harness

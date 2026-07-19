@@ -58,6 +58,16 @@
       "checkpoint": "hf://lerobot/diffusion_so101_stack",
       "requires": { "morphology": "arm", "min_dof": 6, "actuation": "position", "sensors": ["proprioception", "camera"] },
       "summary": "Composes a LeRobot Diffusion Policy checkpoint. Architecture-agnostic: same adapter/contract/envelope as the ACT skill."
+    },
+    {
+      "name": "mobile-goto",
+      "title": "Drive a mobile base to a waypoint",
+      "version": "0.1.0",
+      "path": "skills/mobile-goto",
+      "files": ["skill.json", "policy.mjs", "eval.json"],
+      "policy": "analytic",
+      "requires": { "morphology": "mobile", "min_dof": 2, "actuation": "velocity", "sensors": ["odometry"] },
+      "summary": "A VELOCITY-action-space skill for a mobile base — the contract spans morphologies. Runs on the TurtleBot; gates off the arms."
     }
   ],
   "robots": [

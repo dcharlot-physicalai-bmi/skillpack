@@ -102,3 +102,19 @@ hijacked/OOD policy. Growth is safe by construction.
 New in v0.2: `io.action_space` is explicit on every skill; `policy.checkpoint` + `policy.architecture` for
 `lerobot`; `policy.chunking` (action-horizon) for chunked policies; `eval.environment`
 (`lerobot-runtime` / `browser-webgpu`) for skills whose eval runs outside the Node harness.
+
+## v0.2.1 — action spaces beyond position (morphology breadth)
+
+The safety envelope generalizes across action spaces, so one contract spans morphologies:
+
+- **Position** (arms): `safety.max_step_norm` caps the per-tick position delta (a velocity limit); commands
+  live in `[0,1]`.
+- **Velocity** (mobile bases): `safety.max_speed_norm` caps the speed magnitude and `safety.max_accel_norm`
+  caps the per-tick change in velocity (an acceleration limit); commands live in `[-speed, +speed]`, starting
+  from zero velocity, and `estop` is zero velocity rather than a held pose.
+
+Both are the *same* `safetyClamp` with different bounds. `mobile-goto` runs on the TurtleBot (refused by
+every arm skill) and `verify-mobile.mjs` proves it: reaches its goals, never exceeds the speed or accel cap,
+and a hijacked policy emitting `[NaN, 9999]` is still bounded to the speed limit. `verify-flywheel.mjs` now
+spans **position and velocity skills** across four robots — the whole registry, cross-morphology, safe by
+construction.

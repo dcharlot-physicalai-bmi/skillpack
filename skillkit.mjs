@@ -61,26 +61,33 @@ export async function bind(skill, robot, { q0, policyOpts } = {}) {
   const { target, codec } = await resolveDriver(robot);
   const { normalize } = await driverRegistry();
   const dof = robot.dof;
-  const maxStep = m.safety.max_step_norm;
-  const [lo, hi] = m.safety.clamp || [0, 1];
+  // envelope params depend on the action space. position → clamp [0,1], cap the per-tick step (a velocity
+  // limit). velocity → symmetric clamp [-speed, speed] (a speed limit) + cap the per-tick change (an accel
+  // limit), starting from zero velocity. Same safetyClamp, different bounds — the contract generalizes.
+  const velocity = m.requires.actuation === 'velocity';
+  const maxStep = velocity ? m.safety.max_accel_norm : m.safety.max_step_norm;
+  const [lo, hi] = velocity ? [-m.safety.max_speed_norm, m.safety.max_speed_norm] : (m.safety.clamp || [0, 1]);
+  const home = () => (velocity ? new Array(dof).fill(0) : (q0 ? q0.slice() : new Array(dof).fill(0.5)).slice(0, dof));
   const policy = skill.policyMod.create(m, robot, policyOpts);
-  let prev = (q0 ? q0.slice() : new Array(dof).fill(0.5)).slice(0, dof);
+  let prev = home();
 
   return {
-    target, codec,
-    reset(q) { prev = (q ? q.slice() : new Array(dof).fill(0.5)).slice(0, dof); policy.reset?.(); },
+    target, codec, velocity,
+    reset(q) { prev = velocity ? new Array(dof).fill(0) : (q ? q.slice() : new Array(dof).fill(0.5)).slice(0, dof); policy.reset?.(); },
     state: () => prev.slice(),
     // one control tick: obs → policy proposal → safety envelope → normalized → wire bytes
     step(obs) {
       const proposed = policy.step(obs);                                   // untrusted proposal
-      const safe = safetyClamp(prev, proposed, { maxStep, lo, hi });       // envelope
+      const safe = safetyClamp(prev, proposed, { maxStep, lo, hi });       // envelope (position or velocity)
       prev = safe;
-      const t = normalize(safe, safe.map(() => [0, 1]));                   // already 0..1 (identity here)
+      // the codec speaks a 0..1 range; velocity in [-speed,speed] maps to 0..1 (0.5 = stop)
+      const wireVals = velocity ? safe.map((v) => (v - lo) / ((hi - lo) || 1)) : safe;
+      const t = normalize(wireVals, wireVals.map(() => [0, 1]));
       const ids = robot.joint_ids || safe.map((_, i) => i + 1);
       const wire = codec.encode(t, { ids });
       return { q: safe.slice(), proposed, wire };
     },
-    estop() { /* zero-velocity hold: command = current position, no motion */ return prev.slice(); },
+    estop() { return velocity ? new Array(dof).fill(0) : prev.slice(); },  // velocity: stop; position: hold
   };
 }
 

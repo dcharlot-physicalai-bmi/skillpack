@@ -40,9 +40,11 @@
     },
     "safety": {
       "type": "object",
-      "required": ["max_step_norm"],
+      "description": "position skills set max_step_norm; velocity skills set max_speed_norm + max_accel_norm",
       "properties": {
-        "max_step_norm": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "max normalized per-tick command delta the runtime will allow" },
+        "max_step_norm": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "position: max normalized per-tick position delta (a velocity limit)" },
+        "max_speed_norm": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "velocity: max normalized speed magnitude" },
+        "max_accel_norm": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "velocity: max normalized per-tick change in velocity (an accel limit)" },
         "clamp": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
         "estop": { "type": "string" },
         "watchdog_ms": { "type": "integer", "minimum": 0 }
