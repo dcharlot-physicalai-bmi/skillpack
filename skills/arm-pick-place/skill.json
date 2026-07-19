@@ -1,0 +1,40 @@
+{
+  "name": "arm-pick-place",
+  "version": "0.1.0",
+  "title": "Pick an object and place it on the target",
+  "summary": "Composes a real LeRobot ACT checkpoint. The skill is the contract; the policy is a checkpoint reference. Same safety envelope and transport as every other skill.",
+  "task": "Pick up the object and place it on the target",
+  "authors": ["Institute for Physical AI @ BMI"],
+  "license": "CC-BY-4.0",
+
+  "policy": {
+    "kind": "lerobot",
+    "ref": "../../policies/lerobot.mjs",
+    "checkpoint": "hf://lerobot/act_so101_pickplace",
+    "architecture": "ACT",
+    "runtime": "LeRobot (.select_action) · Python bridge or on-device export",
+    "observation": ["images", "state"],
+    "action": "q_cmd",
+    "chunking": 100,
+    "note": "A LeRobot checkpoint driven through its standard .select_action(obs) interface — swap the checkpoint string for a different one; the contract does not change."
+  },
+
+  "requires": {
+    "morphology": "arm",
+    "min_dof": 5,
+    "actuation": "position",
+    "sensors": ["proprioception", "camera"],
+    "control_rate_hz": 20
+  },
+
+  "safety": { "max_step_norm": 0.08, "clamp": [0, 1], "estop": "zero-velocity-hold", "watchdog_ms": 250 },
+  "io": { "action_space": "normalized-joint-position-0..1", "action_dim": "robot.dof" },
+
+  "contract": {
+    "pre": ["camera frame available", "object visible in the workspace", "robot homed"],
+    "post": ["object relocated onto the target within tolerance", "no per-tick step exceeded safety.max_step_norm"],
+    "invariants": ["every commanded value within [0,1]", "no NaN reaches the driver"]
+  },
+
+  "eval": { "ref": "./eval.json", "metric": "place_success_rate", "threshold": 0.7, "environment": "lerobot-runtime" }
+}

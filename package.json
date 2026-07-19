@@ -1,0 +1,19 @@
+{
+  "name": "@physicalai-bmi/skillpack",
+  "version": "0.2.0",
+  "description": "The open, cross-vendor, safety-enveloped robot-skill layer. A skill is source you own — a policy, a typed contract, a capability manifest, a safety envelope, an eval — that installs, checks your robot's capabilities before it moves, and runs safely on any body. Composes LeRobot policies.",
+  "type": "module",
+  "bin": { "skillpack": "bin/skillpack.mjs" },
+  "exports": {
+    ".": "./skillkit.mjs",
+    "./core": "./skillcore.mjs"
+  },
+  "scripts": {
+    "test": "node verify.mjs && node verify-vla.mjs && node verify-cli.mjs && node verify-flywheel.mjs && node verify-spec.mjs && node verify-mcp.mjs && node verify-bridge.mjs"
+  },
+  "keywords": ["robotics", "physical-ai", "lerobot", "vla", "mcp", "robot-skills", "safety", "embodied-ai"],
+  "author": "Institute for Physical AI @ BMI",
+  "license": "Apache-2.0",
+  "homepage": "https://physicalai-bmi.org/research/skillpack",
+  "engines": { "node": ">=18" }
+}

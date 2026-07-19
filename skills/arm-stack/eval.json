@@ -1,0 +1,7 @@
+{
+  "note": "Runs in the LeRobot runtime with real camera frames driving the Diffusion Policy checkpoint — not in the Node harness, which validates the contract + safety wrapping with a stand-in forward pass.",
+  "environment": "lerobot-runtime",
+  "metric": "stack_success_rate",
+  "threshold": 0.6,
+  "episodes": []
+}

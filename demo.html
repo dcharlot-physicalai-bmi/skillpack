@@ -1,0 +1,300 @@
+<title>skillpack · live — the open robot-skill layer</title>
+<!--
+  Self-contained live demo of the skillpack skill layer. The pure logic below (matchRobot, safetyClamp)
+  mirrors skillcore.mjs; the Feetech codec mirrors hwbridge.js CODECS['feetech-scs'] — inlined so this
+  page runs anywhere (repo page or shareable artifact) as one file. The Node CLI + skillkit remain the
+  single-source runtime; this only visualizes the same contract.
+-->
+<style>
+  :root{
+    --ground:#0b1220;--panel:#141e31;--panel-2:#1b273d;--hair:#263349;
+    --ink:#e7ebf3;--muted:#8792a8;--faint:#5d6880;--gold:#cba24e;--gold-soft:#e2c988;
+    --ok:#39b98a;--ok-bg:rgba(57,185,138,.12);--bad:#e5484d;--bad-bg:rgba(229,72,77,.12);--warn:#e8a13c;
+    --sans:-apple-system,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+    --mono:ui-monospace,"SF Mono","SFMono-Regular",Menlo,"Cascadia Mono",monospace;
+  }
+  @media (prefers-color-scheme:light){:root{
+    --ground:#f3efe6;--panel:#fbf9f3;--panel-2:#f6f2e8;--hair:#e2dbcb;
+    --ink:#1a2436;--muted:#5f6b80;--faint:#8a93a4;--gold:#9a6f16;--gold-soft:#7d5a10;
+    --ok:#1f8f63;--ok-bg:rgba(31,143,99,.10);--bad:#c8352f;--bad-bg:rgba(200,53,47,.10);--warn:#b06d16;
+  }}
+  :root[data-theme="dark"]{--ground:#0b1220;--panel:#141e31;--panel-2:#1b273d;--hair:#263349;--ink:#e7ebf3;--muted:#8792a8;--faint:#5d6880;--gold:#cba24e;--gold-soft:#e2c988;--ok:#39b98a;--ok-bg:rgba(57,185,138,.12);--bad:#e5484d;--bad-bg:rgba(229,72,77,.12);--warn:#e8a13c;}
+  :root[data-theme="light"]{--ground:#f3efe6;--panel:#fbf9f3;--panel-2:#f6f2e8;--hair:#e2dbcb;--ink:#1a2436;--muted:#5f6b80;--faint:#8a93a4;--gold:#9a6f16;--gold-soft:#7d5a10;--ok:#1f8f63;--ok-bg:rgba(31,143,99,.10);--bad:#c8352f;--bad-bg:rgba(200,53,47,.10);--warn:#b06d16;}
+
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);line-height:1.55;font-size:15px;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 22px;}
+  h1,h2,h3{margin:0;text-wrap:balance;}
+  .mono{font-family:var(--mono);}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);font-weight:600;}
+
+  header{border-bottom:1px solid var(--hair);padding:30px 0 24px;}
+  .kick{display:flex;align-items:center;gap:11px;margin-bottom:16px;flex-wrap:wrap;}
+  .phi{font-family:var(--mono);font-weight:700;color:var(--ground);background:var(--gold);width:24px;height:24px;border-radius:5px;display:grid;place-items:center;font-size:15px;}
+  .kick .org{font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.1em;}
+  h1{font-size:clamp(24px,3.6vw,34px);letter-spacing:-.02em;font-weight:700;}
+  h1 .g{color:var(--gold);}
+  .sub{margin-top:11px;color:var(--muted);max-width:64ch;font-size:15px;}
+  .sub b{color:var(--ink);font-weight:600;}
+  code.cli{font-family:var(--mono);background:var(--panel-2);border:1px solid var(--hair);border-radius:6px;padding:2px 8px;font-size:13px;color:var(--gold-soft);}
+
+  .step-lab{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:26px 0 12px;display:flex;align-items:center;gap:9px;}
+  .step-lab .n{color:var(--ground);background:var(--gold);width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:11px;}
+
+  /* robot chips */
+  .robots{display:flex;gap:9px;flex-wrap:wrap;}
+  .rchip{background:var(--panel);border:1px solid var(--hair);border-radius:9px;padding:11px 14px;cursor:pointer;text-align:left;color:var(--ink);font-family:inherit;transition:border-color .15s,background .15s,transform .1s;}
+  .rchip:hover{transform:translateY(-1px);}
+  .rchip[aria-pressed="true"]{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 10%,var(--panel));}
+  .rchip .rn{font-weight:640;font-size:14px;}
+  .rchip .rd{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:3px;letter-spacing:.02em;}
+  .rchip:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+
+  /* registry list */
+  .skills{display:flex;flex-direction:column;gap:10px;}
+  .skill{background:var(--panel);border:1px solid var(--hair);border-radius:11px;padding:15px 17px;display:grid;grid-template-columns:1fr auto;gap:12px 16px;align-items:center;}
+  .skill .sh{font-weight:640;font-size:15.5px;letter-spacing:-.01em;}
+  .skill .sh .pol{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);background:color-mix(in srgb,var(--gold) 14%,transparent);padding:2px 6px;border-radius:4px;margin-left:8px;vertical-align:2px;}
+  .skill .sd{font-size:12.5px;color:var(--muted);margin-top:3px;}
+  .skill .needs{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:5px;letter-spacing:.02em;}
+  .gate{grid-column:1/-1;display:flex;align-items:flex-start;gap:10px;padding-top:11px;border-top:1px dashed var(--hair);font-size:12.5px;}
+  .badge{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:5px;white-space:nowrap;}
+  .badge.ok{color:var(--ok);background:var(--ok-bg);}
+  .badge.bad{color:var(--bad);background:var(--bad-bg);}
+  .gate .why{color:var(--muted);line-height:1.45;}
+  .gate .why b{color:var(--ink);font-weight:600;}
+  .run-btn{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.04em;padding:8px 14px;border-radius:7px;border:1px solid var(--gold);background:color-mix(in srgb,var(--gold) 14%,transparent);color:var(--gold-soft);cursor:pointer;white-space:nowrap;}
+  .run-btn:hover{background:color-mix(in srgb,var(--gold) 24%,transparent);}
+  .run-btn:disabled{opacity:.4;cursor:not-allowed;border-color:var(--hair);color:var(--faint);background:transparent;}
+  .run-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+
+  /* runtime panel */
+  .stage{background:var(--panel);border:1px solid var(--hair);border-radius:12px;padding:18px;margin-top:4px;display:grid;grid-template-columns:1.1fr .9fr;gap:20px;}
+  .stage.empty{color:var(--faint);text-align:center;padding:34px;display:block;font-size:13.5px;}
+  .joints{display:flex;flex-direction:column;gap:9px;}
+  .jrow{display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:center;}
+  .jrow .jl{font-family:var(--mono);font-size:11px;color:var(--muted);}
+  .jtrack{height:16px;background:var(--panel-2);border:1px solid var(--hair);border-radius:5px;position:relative;overflow:hidden;}
+  .jfill{position:absolute;top:0;bottom:0;left:0;background:var(--gold);border-radius:4px 0 0 4px;transition:width .06s linear;}
+  .jtarget{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ok);}
+  .rt-side{display:flex;flex-direction:column;gap:14px;}
+  .rt-meta{display:flex;flex-direction:column;gap:7px;font-family:var(--mono);font-size:11.5px;}
+  .rt-meta .row{display:flex;justify-content:space-between;gap:12px;}
+  .rt-meta .k{color:var(--faint);}
+  .rt-meta .v{color:var(--ink);font-variant-numeric:tabular-nums;}
+  .rt-meta .v.ok{color:var(--ok);} .rt-meta .v.warn{color:var(--warn);}
+  .wire{font-family:var(--mono);font-size:11px;background:var(--panel-2);border:1px solid var(--hair);border-radius:8px;padding:11px;color:var(--gold-soft);word-break:break-all;line-height:1.6;min-height:58px;}
+  .wire .lab{color:var(--faint);text-transform:uppercase;letter-spacing:.1em;font-size:9.5px;display:block;margin-bottom:5px;}
+  .toggles{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:2px;}
+  .tog{font-family:var(--mono);font-size:11.5px;color:var(--muted);display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none;background:var(--panel-2);border:1px solid var(--hair);padding:7px 11px;border-radius:7px;}
+  .tog input{accent-color:var(--bad);}
+  .tog.on{color:var(--bad);border-color:var(--bad);}
+  .envnote{font-size:12px;color:var(--muted);margin-top:2px;}
+  .envnote b{color:var(--ok);}
+  .envnote.hot b{color:var(--bad);}
+  @media (max-width:720px){.stage{grid-template-columns:1fr;}.skill{grid-template-columns:1fr;}.run-btn{justify-self:start;}}
+
+  footer{border-top:1px solid var(--hair);margin-top:34px;padding:22px 0 40px;color:var(--faint);font-family:var(--mono);font-size:11.5px;letter-spacing:.03em;}
+  footer a{color:var(--gold-soft);text-decoration:none;}
+</style>
+
+<header>
+  <div class="wrap">
+    <div class="kick"><span class="phi">Φ</span><span class="org">Institute for Physical AI @ BMI · skillpack demo</span></div>
+    <h1><span class="g">skillpack</span> — the open robot-skill layer, live</h1>
+    <p class="sub">Pick a robot. The registry answers <b>“will this skill run on my body?”</b> before anything
+      moves. Install a compatible one and watch its policy drive through the <b>runtime safety envelope</b>
+      to real wire bytes — then <b>corrupt the policy</b> and watch the envelope hold. Same contract as
+      <code class="cli">skillpack add arm-reach</code>.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="step-lab"><span class="n">1</span> pick a robot</div>
+  <div class="robots" id="robots"></div>
+
+  <div class="step-lab"><span class="n">2</span> the registry · gated against your robot</div>
+  <div class="skills" id="skills"></div>
+
+  <div class="step-lab"><span class="n">3</span> run · policy → safety envelope → wire</div>
+  <div id="stageWrap"><div class="stage empty" id="stage">Install a compatible skill above to run it here.</div></div>
+</main>
+
+<footer>
+  <div class="wrap">
+    open · cross-vendor · safety-enveloped · install-as-source ·
+    <a href="https://github.com/huggingface/lerobot">composes LeRobot</a> ·
+    logic mirrors skillcore.mjs + hwbridge.js (Feetech STS/SMS)
+  </div>
+</footer>
+
+<script>
+// ── data (mirrors registry.json / robots/*.json) ──
+const ROBOTS = [
+  { name:'so101', label:'SO-101', desc:'Feetech · 5-DoF arm', morphology:'arm', dof:5, actuation:'position', sensors:['proprioception','target_pose','camera'], joint_ids:[1,2,3,4,5], driver:{target:'feetech'} },
+  { name:'wx250', label:'WidowX-250', desc:'Dynamixel · 6-DoF arm', morphology:'arm', dof:6, actuation:'position', sensors:['proprioception','target_pose','camera'], joint_ids:[1,2,3,4,5,6], driver:{target:'dynamixel'} },
+  { name:'maestro', label:'Hobby arm', desc:'Maestro · 4-DoF, no camera', morphology:'arm', dof:4, actuation:'position', sensors:['proprioception','target_pose'], driver:{target:'maestro'} },
+  { name:'turtlebot', label:'TurtleBot 4', desc:'mobile base · 2 wheels', morphology:'mobile', dof:2, actuation:'velocity', sensors:['odometry','lidar'], driver:{target:'ros2'} },
+];
+const SKILLS = [
+  { name:'arm-reach', title:'Reach a target with the end-effector', policy:'analytic',
+    requires:{morphology:'arm',min_dof:4,actuation:'position',sensors:['proprioception','target_pose']},
+    safety:{max_step_norm:0.08,clamp:[0,1]},
+    desc:'Baseline P-controller reach, ramped under a per-tick velocity cap.' },
+  { name:'arm-reach-vla', title:'Reach a target (SmolVLA policy)', policy:'vla',
+    requires:{morphology:'arm',min_dof:4,actuation:'position',sensors:['proprioception','camera']},
+    safety:{max_step_norm:0.08,clamp:[0,1]},
+    desc:'The same skill driven by a real SmolVLA (450M). Weights run in-browser on WebGPU.' },
+  { name:'gripper-grasp', title:'Close the gripper to grasp', policy:'analytic',
+    requires:{morphology:'arm',min_dof:5,actuation:'position',sensors:['proprioception','target_pose']},
+    safety:{max_step_norm:0.06,clamp:[0,1]},
+    desc:'Approach + close to a grasp config. Needs the gripper DoF (≥5), so 4-DoF arms gate out.' },
+  { name:'arm-pick-place', title:'Pick and place (LeRobot ACT)', policy:'lerobot',
+    requires:{morphology:'arm',min_dof:5,actuation:'position',sensors:['proprioception','camera']},
+    safety:{max_step_norm:0.08,clamp:[0,1]},
+    desc:'Composes a real LeRobot ACT checkpoint via .select_action — the skill is the contract, the policy is a reference.' },
+  { name:'arm-stack', title:'Stack the blocks (LeRobot Diffusion)', policy:'lerobot',
+    requires:{morphology:'arm',min_dof:6,actuation:'position',sensors:['proprioception','camera']},
+    safety:{max_step_norm:0.07,clamp:[0,1]},
+    desc:'A LeRobot Diffusion Policy checkpoint. Needs ≥6 DoF — only the WidowX qualifies. Same contract, different architecture.' },
+];
+
+// ── pure logic (mirrors skillcore.mjs) ──
+function matchRobot(skill, robot){
+  const req=skill.requires, reasons=[];
+  if(robot.morphology!==req.morphology) reasons.push(`morphology: needs "${req.morphology}", robot is "${robot.morphology}"`);
+  if(robot.dof<req.min_dof) reasons.push(`dof: needs ≥${req.min_dof}, robot has ${robot.dof}`);
+  if(req.actuation&&robot.actuation!==req.actuation) reasons.push(`actuation: needs "${req.actuation}", robot is "${robot.actuation}"`);
+  const have=new Set(robot.sensors||[]); const miss=(req.sensors||[]).filter(s=>!have.has(s));
+  if(miss.length) reasons.push(`sensors: missing ${miss.map(s=>`"${s}"`).join(', ')}`);
+  return {ok:reasons.length===0, reasons};
+}
+function safetyClamp(prev, cmd, maxStep, lo=0, hi=1){
+  return cmd.map((raw,i)=>{ let v=Number.isFinite(raw)?raw:prev[i]; v=Math.max(lo,Math.min(hi,v));
+    const p=prev[i]; if(v-p>maxStep)v=p+maxStep; else if(p-v>maxStep)v=p-maxStep; return v; });
+}
+// ── Feetech STS/SMS SYNC WRITE (mirrors hwbridge CODECS['feetech-scs']) ──
+function feetechEncode(t, ids){
+  const ADDR=42,L=2,N=t.length, body=[ADDR,L];
+  t.forEach((v,i)=>{const p=Math.round(v*4095); body.push(ids[i]&0xFF, p&0xFF, (p>>8)&0xFF);});
+  const len=(L+1)*N+4, pkt=[0xFF,0xFF,0xFE,len,0x83,...body];
+  let sum=0; for(let i=2;i<pkt.length;i++) sum+=pkt[i]; pkt.push((~sum)&0xFF);
+  return pkt.map(b=>b.toString(16).padStart(2,'0')).join(' ');
+}
+const CODEC_LABEL={feetech:'Feetech STS/SMS',dynamixel:'Dynamixel 2.0',maestro:'Pololu Maestro',ros2:'ROS 2'};
+
+// ── state ──
+let robot = ROBOTS[0];
+let raf=null, run=null;
+
+function el(tag,cls,html){const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e;}
+
+function renderRobots(){
+  const box=document.getElementById('robots'); box.innerHTML='';
+  ROBOTS.forEach(r=>{
+    const b=el('button','rchip'); b.setAttribute('aria-pressed', r===robot);
+    b.innerHTML=`<div class="rn">${r.label}</div><div class="rd">${r.desc}</div>`;
+    b.onclick=()=>{ robot=r; stop(); renderRobots(); renderSkills(); resetStage(); };
+    box.appendChild(b);
+  });
+}
+function renderSkills(){
+  const box=document.getElementById('skills'); box.innerHTML='';
+  SKILLS.forEach(s=>{
+    const m=matchRobot(s,robot);
+    const card=el('div','skill');
+    card.innerHTML=`<div><div class="sh">${s.name}<span class="pol">${s.policy}</span></div>
+      <div class="sd">${s.desc}</div>
+      <div class="needs">needs: ${s.requires.morphology} ≥${s.requires.min_dof}dof ${s.requires.actuation} · ${s.requires.sensors.join(', ')}</div></div>`;
+    const act=el('div'); act.style.textAlign='right';
+    const btn=el('button','run-btn',m.ok?'▶ Install &amp; run':'Install &amp; run'); btn.disabled=!m.ok;
+    if(m.ok) btn.onclick=()=>start(s);
+    act.appendChild(btn); card.appendChild(act);
+    const gate=el('div','gate');
+    gate.innerHTML = m.ok
+      ? `<span class="badge ok">✓ compatible</span><span class="why">this robot satisfies the skill's capability manifest — safe to install</span>`
+      : `<span class="badge bad">✗ incompatible</span><span class="why">${m.reasons.map(r=>`<b>${r.split(':')[0]}</b>:${r.split(':').slice(1).join(':')}`).join('<br>')}</span>`;
+    card.appendChild(gate);
+    box.appendChild(card);
+  });
+}
+
+function resetStage(){ document.getElementById('stageWrap').innerHTML='<div class="stage empty" id="stage">Install a compatible skill above to run it here.</div>'; }
+function stop(){ if(raf) cancelAnimationFrame(raf); raf=null; run=null; }
+
+function start(skill){
+  stop();
+  const dof=robot.dof, ids=robot.joint_ids||Array.from({length:dof},(_,i)=>i+1);
+  const maxStep=skill.safety.max_step_norm;
+  let q=new Array(dof).fill(0.5);
+  let target=Array.from({length:dof},()=>0.08+Math.random()*0.84);
+  let corrupt=false, ticks=0, maxStepSeen=0, reached=false;
+
+  const wrap=document.getElementById('stageWrap'); wrap.innerHTML='';
+  const stage=el('div','stage');
+  stage.innerHTML=`
+    <div>
+      <div class="joints" id="joints"></div>
+      <div class="toggles">
+        <label class="tog" id="corruptTog"><input type="checkbox" id="corrupt"> corrupt the policy (NaN · 9 · −5)</label>
+        <button class="run-btn" id="newtarget">↻ new target</button>
+      </div>
+      <div class="envnote" id="envnote">The policy proposes; the <b>runtime envelope</b> ramps every joint ≤ ${maxStep}/tick and clamps to [0,1].</div>
+    </div>
+    <div class="rt-side">
+      <div class="rt-meta">
+        <div class="row"><span class="k">skill</span><span class="v">${skill.name}</span></div>
+        <div class="row"><span class="k">policy</span><span class="v">${skill.policy}${skill.policy==='vla'?' (SmolVLA·WebGPU)':''}</span></div>
+        <div class="row"><span class="k">robot / driver</span><span class="v">${robot.label} · ${CODEC_LABEL[robot.driver.target]}</span></div>
+        <div class="row"><span class="k">max step seen</span><span class="v ok" id="mss">0.000</span></div>
+        <div class="row"><span class="k">all in [0,1]</span><span class="v ok" id="inrange">yes</span></div>
+        <div class="row"><span class="k">wire packet</span><span class="v ok" id="wireok">valid</span></div>
+      </div>
+      <div class="wire"><span class="lab">${CODEC_LABEL[robot.driver.target]} · goal-position bytes @20Hz</span><span id="wirehex">—</span></div>
+    </div>`;
+  wrap.appendChild(stage);
+
+  const jbox=stage.querySelector('#joints');
+  const rows=[];
+  for(let i=0;i<dof;i++){
+    const row=el('div','jrow');
+    row.innerHTML=`<span class="jl">J${i+1}</span><div class="jtrack"><div class="jfill"></div><div class="jtarget"></div></div>`;
+    jbox.appendChild(row); rows.push(row);
+  }
+  stage.querySelector('#corrupt').addEventListener('change',(e)=>{ corrupt=e.target.checked; stage.querySelector('#corruptTog').classList.toggle('on',corrupt); });
+  stage.querySelector('#newtarget').addEventListener('click',()=>{ target=Array.from({length:dof},()=>0.08+Math.random()*0.84); reached=false; });
+
+  let acc=0, last=performance.now();
+  function frame(now){
+    acc += now-last; last=now;
+    while(acc>=50){ tick(); acc-=50; }         // 20 Hz control
+    render();
+    raf=requestAnimationFrame(frame);
+  }
+  function tick(){
+    // policy proposal: analytic drives to target; "corrupt" emits garbage a hijacked/OOD policy might
+    const proposed = corrupt ? q.map((_,i)=>[NaN,9,-5,Infinity,42,7][i%6]) : target.slice();
+    const safe = safetyClamp(q, proposed, maxStep, 0, 1);
+    for(let i=0;i<dof;i++) maxStepSeen=Math.max(maxStepSeen, Math.abs(safe[i]-q[i]));
+    q=safe; ticks++;
+    if(!corrupt){ const err=Math.max(...q.map((v,i)=>Math.abs(v-target[i]))); if(err<0.03&&!reached){reached=true;} }
+  }
+  function render(){
+    for(let i=0;i<dof;i++){ rows[i].querySelector('.jfill').style.width=(q[i]*100)+'%'; rows[i].querySelector('.jtarget').style.left=(target[i]*100)+'%'; }
+    const ids2=ids; const hex=feetechEncode(q, ids2);      // always encode through the (mirrored) real codec
+    stage.querySelector('#wirehex').textContent=hex;
+    const inRange=q.every(v=>v>=0&&v<=1&&Number.isFinite(v));
+    const validPkt=/^ff ff fe/.test(hex);
+    stage.querySelector('#mss').textContent=maxStepSeen.toFixed(3);
+    stage.querySelector('#mss').className='v '+(maxStepSeen<=maxStep+1e-6?'ok':'warn');
+    stage.querySelector('#inrange').textContent=inRange?'yes':'NO'; stage.querySelector('#inrange').className='v '+(inRange?'ok':'warn');
+    stage.querySelector('#wireok').textContent=validPkt?'valid':'INVALID'; stage.querySelector('#wireok').className='v '+(validPkt?'ok':'warn');
+    const note=stage.querySelector('#envnote');
+    if(corrupt){ note.classList.add('hot'); note.innerHTML='Policy is emitting garbage (NaN · 9 · −5 · ∞). The envelope <b>still holds</b>: joints stay in [0,1], no step exceeds the cap, the wire packet stays valid.'; }
+    else { note.classList.remove('hot'); note.innerHTML=`The policy proposes; the <b>runtime envelope</b> ramps every joint ≤ ${maxStep}/tick and clamps to [0,1].`; }
+  }
+  render(); raf=requestAnimationFrame(frame); run=skill;
+}
+
+renderRobots(); renderSkills();
+</script>

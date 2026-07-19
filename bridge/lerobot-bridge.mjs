@@ -1,0 +1,44 @@
+// lerobot-bridge — Node client for the Python LeRobot bridge server. Spawns lerobot_server.py, speaks
+// line-delimited JSON, and exposes a backend `{ selectAction(obs) }` that plugs straight into the
+// skillpack `lerobot` policy adapter. This is how a `lerobot` skill gets driven by a REAL checkpoint
+// running in a LeRobot (Python) runtime — while the skillkit safety envelope, on this side, bounds it.
+
+import { spawn } from 'node:child_process';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+
+export function connectLeRobot(checkpoint = 'mock', { python = 'python3' } = {}) {
+  const proc = spawn(python, [resolve(HERE, 'lerobot_server.py'), '--checkpoint', checkpoint], { stdio: ['pipe', 'pipe', 'pipe'] });
+  let buf = '';
+  const waiters = [];
+  proc.stdout.on('data', (d) => {
+    buf += d;
+    let nl;
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
+      if (!line) continue;
+      const w = waiters.shift();
+      if (w) { try { w.resolve(JSON.parse(line)); } catch (e) { w.reject(e); } }
+    }
+  });
+  let ready = null;
+  const readyP = new Promise((res) => { ready = res; });
+  proc.stderr.on('data', (d) => { if (/ready ·/.test(d.toString())) ready(); });
+
+  const rpc = (obj) => new Promise((resolve, reject) => { waiters.push({ resolve, reject }); proc.stdin.write(JSON.stringify(obj) + '\n'); });
+
+  return {
+    ready: () => readyP,
+    // the backend the lerobot adapter expects
+    async selectAction(obs) {
+      const state = obs && (obs.state || obs.q);
+      const target = obs && obs.q_target;
+      const r = await rpc({ method: 'select_action', obs: { state, target } });
+      return r.action;
+    },
+    reset: () => rpc({ method: 'reset' }),
+    async close() { try { await rpc({ method: 'shutdown' }); } catch {} proc.kill(); },
+  };
+}

@@ -1,0 +1,10 @@
+{
+  "name": "SO-101 (LeRobot)",
+  "morphology": "arm",
+  "dof": 5,
+  "actuation": "position",
+  "sensors": ["proprioception", "target_pose", "camera"],
+  "control_rate_hz": 20,
+  "joint_ids": [1, 2, 3, 4, 5],
+  "driver": { "target": "feetech" }
+}

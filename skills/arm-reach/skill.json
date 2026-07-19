@@ -1,0 +1,58 @@
+{
+  "name": "arm-reach",
+  "version": "0.1.0",
+  "title": "Reach a target with the end-effector",
+  "summary": "Drive an N-DoF position-controlled arm to a commanded joint target, ramped under a per-tick velocity cap and a workspace clamp.",
+  "task": "Reach the target with the end effector",
+  "authors": ["Institute for Physical AI @ BMI"],
+  "license": "CC-BY-4.0",
+
+  "policy": {
+    "kind": "analytic",
+    "ref": "./policy.mjs",
+    "observation": ["q", "q_target"],
+    "action": "q_cmd",
+    "note": "Baseline P-controller (deterministic, ships in-repo). For a trained policy, set kind:'lerobot' + ref:'hf://lerobot/<checkpoint>' — same manifest, contract, safety envelope, transport."
+  },
+
+  "requires": {
+    "morphology": "arm",
+    "min_dof": 4,
+    "actuation": "position",
+    "sensors": ["proprioception", "target_pose"],
+    "control_rate_hz": 20
+  },
+
+  "safety": {
+    "max_step_norm": 0.08,
+    "clamp": [0, 1],
+    "estop": "zero-velocity-hold",
+    "watchdog_ms": 250
+  },
+
+  "io": {
+    "action_space": "normalized-joint-position-0..1",
+    "action_dim": "robot.dof"
+  },
+
+  "contract": {
+    "pre": [
+      "q_target provided in normalized joint space, one value per actuated joint",
+      "robot homed — current q is known"
+    ],
+    "post": [
+      "max_i |q_i - q_target_i| < tolerance",
+      "no per-tick step exceeded safety.max_step_norm"
+    ],
+    "invariants": [
+      "every commanded value within [0,1]",
+      "no NaN or non-finite command ever reaches the driver"
+    ]
+  },
+
+  "eval": {
+    "ref": "./eval.json",
+    "metric": "reach_success_rate",
+    "threshold": 0.8
+  }
+}

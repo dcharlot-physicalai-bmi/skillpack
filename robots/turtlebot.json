@@ -1,0 +1,9 @@
+{
+  "name": "TurtleBot 4 (mobile base)",
+  "morphology": "mobile",
+  "dof": 2,
+  "actuation": "velocity",
+  "sensors": ["odometry", "lidar"],
+  "control_rate_hz": 20,
+  "driver": { "target": "ros2" }
+}

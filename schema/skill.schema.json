@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillpack.dev/schema/skill.schema.json",
+  "title": "skillpack skill manifest",
+  "description": "An open, hardware-agnostic robot-skill package. A skill is source you own: a policy reference, a typed contract, a capability manifest, a safety envelope, and an eval.",
+  "type": "object",
+  "required": ["name", "version", "policy", "requires", "safety", "contract"],
+  "additionalProperties": true,
+  "properties": {
+    "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+" },
+    "title": { "type": "string" },
+    "summary": { "type": "string" },
+    "task": { "type": "string" },
+    "authors": { "type": "array", "items": { "type": "string" } },
+    "license": { "type": "string" },
+    "policy": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["analytic", "vla", "lerobot", "mlp"] },
+        "ref": { "type": "string", "description": "local .mjs adapter, or a remote reference resolved by the deployment" },
+        "checkpoint": { "type": "string", "description": "for kind=lerobot: e.g. hf://lerobot/act_so101_pickplace" },
+        "architecture": { "type": "string" },
+        "chunking": { "type": "integer", "minimum": 1, "description": "action-horizon length for chunked policies" },
+        "observation": { "type": "array", "items": { "type": "string" } },
+        "action": { "type": "string" }
+      }
+    },
+    "requires": {
+      "type": "object",
+      "required": ["morphology", "min_dof"],
+      "properties": {
+        "morphology": { "enum": ["arm", "mobile", "quadruped", "humanoid", "gripper", "drone"] },
+        "min_dof": { "type": "integer", "minimum": 1 },
+        "actuation": { "enum": ["position", "velocity", "torque"] },
+        "sensors": { "type": "array", "items": { "type": "string" } },
+        "control_rate_hz": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "required": ["max_step_norm"],
+      "properties": {
+        "max_step_norm": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "max normalized per-tick command delta the runtime will allow" },
+        "clamp": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+        "estop": { "type": "string" },
+        "watchdog_ms": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "io": {
+      "type": "object",
+      "properties": {
+        "action_space": { "type": "string" },
+        "action_dim": { "type": "string" }
+      }
+    },
+    "contract": {
+      "type": "object",
+      "required": ["post", "invariants"],
+      "properties": {
+        "pre": { "type": "array", "items": { "type": "string" } },
+        "post": { "type": "array", "items": { "type": "string" } },
+        "invariants": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "eval": {
+      "type": "object",
+      "properties": {
+        "ref": { "type": "string" },
+        "metric": { "type": "string" },
+        "threshold": { "type": "number" },
+        "environment": { "enum": ["node", "browser-webgpu", "lerobot-runtime", "hardware"] }
+      }
+    }
+  }
+}

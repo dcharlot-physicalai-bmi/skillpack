@@ -1,0 +1,64 @@
+{
+  "name": "arm-reach-vla",
+  "version": "0.1.0",
+  "title": "Reach a target with the end-effector (SmolVLA policy)",
+  "summary": "The arm-reach skill driven by a real learned Vision-Language-Action policy (SmolVLA, 450M). Same contract, safety envelope, transport, and eval harness as arm-reach — only the policy block (and its observation/sensor needs) changed.",
+  "task": "Reach the target with the end effector",
+  "authors": ["Institute for Physical AI @ BMI"],
+  "license": "CC-BY-4.0",
+
+  "policy": {
+    "kind": "vla",
+    "ref": "./policy.smolvla.mjs",
+    "model": "smolvla-base-onnx-fp16",
+    "runtime": "onnxruntime-web · WebGPU (in-browser; 450M weights)",
+    "observation": ["images", "state", "task"],
+    "action": "q_cmd",
+    "chunking": 50,
+    "note": "The one that swapped in. Contract/safety/transport/eval unchanged from arm-reach; the analytic P-controller became a real VLA. Weights run in-browser on WebGPU."
+  },
+
+  "requires": {
+    "morphology": "arm",
+    "min_dof": 4,
+    "actuation": "position",
+    "sensors": ["proprioception", "camera"],
+    "control_rate_hz": 20
+  },
+
+  "safety": {
+    "max_step_norm": 0.08,
+    "clamp": [0, 1],
+    "estop": "zero-velocity-hold",
+    "watchdog_ms": 250
+  },
+
+  "io": {
+    "action_space": "normalized-joint-position-0..1",
+    "action_dim": "robot.dof"
+  },
+
+  "contract": {
+    "pre": [
+      "camera frame available",
+      "task string provided",
+      "robot homed — current q is known"
+    ],
+    "post": [
+      "max_i |q_i - q_target_i| < tolerance",
+      "no per-tick step exceeded safety.max_step_norm"
+    ],
+    "invariants": [
+      "every commanded value within [0,1]",
+      "no NaN or non-finite command ever reaches the driver"
+    ]
+  },
+
+  "eval": {
+    "ref": "./eval.json",
+    "metric": "reach_success_rate",
+    "threshold": 0.8,
+    "environment": "browser-webgpu",
+    "note": "Runs in-browser (WebGPU) with real camera frames — not in the Node harness, which validates the contract + safety wrapping."
+  }
+}

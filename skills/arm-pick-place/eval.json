@@ -1,0 +1,7 @@
+{
+  "note": "Runs in the LeRobot runtime with real camera frames driving the ACT checkpoint — not in the Node harness, which validates the contract + safety wrapping with a stand-in forward pass. Same success metric family as the analytic skills so policies are comparable.",
+  "environment": "lerobot-runtime",
+  "metric": "place_success_rate",
+  "threshold": 0.7,
+  "episodes": []
+}

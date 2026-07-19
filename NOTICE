@@ -1,0 +1,8 @@
+skillpack
+Copyright 2026 Institute for Physical AI @ BMI
+
+This product includes software developed at the Institute for Physical AI @ BMI.
+
+drivers/hwbridge.js and policies/smolvla.js are vendored from the Institute's Forge
+toolchain (the sim-to-real driver registry and the in-browser SmolVLA runtime) and are
+distributed under the same Apache-2.0 license.

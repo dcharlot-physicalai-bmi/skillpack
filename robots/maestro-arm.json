@@ -1,0 +1,9 @@
+{
+  "name": "Hobby 4-DoF arm (Pololu Maestro)",
+  "morphology": "arm",
+  "dof": 4,
+  "actuation": "position",
+  "sensors": ["proprioception", "target_pose"],
+  "control_rate_hz": 20,
+  "driver": { "target": "maestro" }
+}

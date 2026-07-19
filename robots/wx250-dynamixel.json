@@ -1,0 +1,10 @@
+{
+  "name": "WidowX-250 (Dynamixel X)",
+  "morphology": "arm",
+  "dof": 6,
+  "actuation": "position",
+  "sensors": ["proprioception", "target_pose", "camera"],
+  "control_rate_hz": 20,
+  "joint_ids": [1, 2, 3, 4, 5, 6],
+  "driver": { "target": "dynamixel" }
+}

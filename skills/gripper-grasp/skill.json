@@ -1,0 +1,30 @@
+{
+  "name": "gripper-grasp",
+  "version": "0.1.0",
+  "title": "Close the gripper to grasp",
+  "summary": "Drive an arm with a gripper to a grasp configuration (approach + close), ramped under a per-tick velocity cap. Needs the gripper degree of freedom, so it requires ≥5 DoF.",
+  "task": "Grasp the object at the target and hold",
+  "authors": ["Institute for Physical AI @ BMI"],
+  "license": "CC-BY-4.0",
+
+  "policy": { "kind": "analytic", "ref": "./policy.mjs", "observation": ["q", "q_target"], "action": "q_cmd" },
+
+  "requires": {
+    "morphology": "arm",
+    "min_dof": 5,
+    "actuation": "position",
+    "sensors": ["proprioception", "target_pose"],
+    "control_rate_hz": 20
+  },
+
+  "safety": { "max_step_norm": 0.06, "clamp": [0, 1], "estop": "zero-velocity-hold", "watchdog_ms": 250 },
+  "io": { "action_space": "normalized-joint-position-0..1", "action_dim": "robot.dof" },
+
+  "contract": {
+    "pre": ["q_target provided (grasp config, gripper joint near closed)", "robot homed"],
+    "post": ["max_i |q_i - q_target_i| < tolerance", "no per-tick step exceeded safety.max_step_norm"],
+    "invariants": ["every commanded value within [0,1]", "no NaN reaches the driver"]
+  },
+
+  "eval": { "ref": "./eval.json", "metric": "reach_success_rate", "threshold": 0.8 }
+}

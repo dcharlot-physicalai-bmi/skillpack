@@ -1,0 +1,8 @@
+{
+  "note": "VLA eval runs in-browser (WebGPU) with real camera frames driving SmolVLA — not in the Node harness. Same success metric/threshold as arm-reach so the two policies are directly comparable (the eval layer is policy-agnostic).",
+  "environment": "browser-webgpu",
+  "tolerance": 0.03,
+  "max_ticks": 60,
+  "dof": 5,
+  "episodes": []
+}

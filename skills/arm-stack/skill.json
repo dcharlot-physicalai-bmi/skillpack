@@ -1,0 +1,40 @@
+{
+  "name": "arm-stack",
+  "version": "0.1.0",
+  "title": "Stack the blocks",
+  "summary": "Composes a real LeRobot Diffusion Policy checkpoint. Different architecture, different checkpoint string — identical contract, safety envelope, and transport.",
+  "task": "Stack the blocks into a tower",
+  "authors": ["Institute for Physical AI @ BMI"],
+  "license": "CC-BY-4.0",
+
+  "policy": {
+    "kind": "lerobot",
+    "ref": "../../policies/lerobot.mjs",
+    "checkpoint": "hf://lerobot/diffusion_so101_stack",
+    "architecture": "DiffusionPolicy",
+    "runtime": "LeRobot (.select_action) · Python bridge or on-device export",
+    "observation": ["images", "state"],
+    "action": "q_cmd",
+    "chunking": 16,
+    "note": "Proof the composition is architecture-agnostic: ACT and DiffusionPolicy differ entirely inside, but expose the same .select_action(obs) — so the same adapter, contract, and envelope wrap both."
+  },
+
+  "requires": {
+    "morphology": "arm",
+    "min_dof": 6,
+    "actuation": "position",
+    "sensors": ["proprioception", "camera"],
+    "control_rate_hz": 20
+  },
+
+  "safety": { "max_step_norm": 0.07, "clamp": [0, 1], "estop": "zero-velocity-hold", "watchdog_ms": 250 },
+  "io": { "action_space": "normalized-joint-position-0..1", "action_dim": "robot.dof" },
+
+  "contract": {
+    "pre": ["camera frame available", "blocks visible", "robot homed"],
+    "post": ["blocks stacked within tolerance", "no per-tick step exceeded safety.max_step_norm"],
+    "invariants": ["every commanded value within [0,1]", "no NaN reaches the driver"]
+  },
+
+  "eval": { "ref": "./eval.json", "metric": "stack_success_rate", "threshold": 0.6, "environment": "lerobot-runtime" }
+}

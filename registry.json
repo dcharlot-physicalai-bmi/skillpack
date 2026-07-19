@@ -1,0 +1,69 @@
+{
+  "$schema": "https://skillpack.dev/registry.schema.json",
+  "name": "skillpack-registry",
+  "version": "0.1.0",
+  "homepage": "https://physicalai-bmi.org/skillpack",
+  "description": "The open, cross-vendor registry of robot skills. Install as source — a policy reference + a typed contract + a capability manifest + a safety envelope + an eval. Composes LeRobot checkpoints; runs on any body in the driver registry.",
+  "skills": [
+    {
+      "name": "arm-reach",
+      "title": "Reach a target with the end-effector",
+      "version": "0.1.0",
+      "path": "skills/arm-reach",
+      "files": ["skill.json", "policy.mjs", "eval.json"],
+      "policy": "analytic",
+      "requires": { "morphology": "arm", "min_dof": 4, "actuation": "position", "sensors": ["proprioception", "target_pose"] },
+      "summary": "Baseline P-controller reach, ramped under a per-tick velocity cap. Deterministic, ships in-repo."
+    },
+    {
+      "name": "arm-reach-vla",
+      "title": "Reach a target with the end-effector (SmolVLA policy)",
+      "version": "0.1.0",
+      "path": "skills/arm-reach-vla",
+      "files": ["skill.json", "policy.smolvla.mjs", "eval.json"],
+      "policy": "vla",
+      "requires": { "morphology": "arm", "min_dof": 4, "actuation": "position", "sensors": ["proprioception", "camera"] },
+      "summary": "The same skill driven by a real SmolVLA (450M) — same contract, safety envelope, transport. Weights run in-browser on WebGPU."
+    },
+    {
+      "name": "gripper-grasp",
+      "title": "Close the gripper to grasp",
+      "version": "0.1.0",
+      "path": "skills/gripper-grasp",
+      "files": ["skill.json", "policy.mjs", "eval.json"],
+      "policy": "analytic",
+      "requires": { "morphology": "arm", "min_dof": 5, "actuation": "position", "sensors": ["proprioception", "target_pose"] },
+      "summary": "Approach + close to a grasp config, ramped under the velocity cap. Needs the gripper DoF (≥5), so it gates out 4-DoF arms."
+    },
+    {
+      "name": "arm-pick-place",
+      "title": "Pick an object and place it on the target",
+      "version": "0.1.0",
+      "path": "skills/arm-pick-place",
+      "files": ["skill.json", "eval.json"],
+      "runtime": "@skillpack/lerobot (shared adapter)",
+      "policy": "lerobot",
+      "checkpoint": "hf://lerobot/act_so101_pickplace",
+      "requires": { "morphology": "arm", "min_dof": 5, "actuation": "position", "sensors": ["proprioception", "camera"] },
+      "summary": "Composes a real LeRobot ACT checkpoint via .select_action — the skill is the contract, the policy is a checkpoint reference."
+    },
+    {
+      "name": "arm-stack",
+      "title": "Stack the blocks",
+      "version": "0.1.0",
+      "path": "skills/arm-stack",
+      "files": ["skill.json", "eval.json"],
+      "runtime": "@skillpack/lerobot (shared adapter)",
+      "policy": "lerobot",
+      "checkpoint": "hf://lerobot/diffusion_so101_stack",
+      "requires": { "morphology": "arm", "min_dof": 6, "actuation": "position", "sensors": ["proprioception", "camera"] },
+      "summary": "Composes a LeRobot Diffusion Policy checkpoint. Architecture-agnostic: same adapter/contract/envelope as the ACT skill."
+    }
+  ],
+  "robots": [
+    { "name": "so101", "path": "robots/so101.json", "label": "SO-101 (LeRobot · Feetech)" },
+    { "name": "wx250", "path": "robots/wx250-dynamixel.json", "label": "WidowX-250 (Dynamixel)" },
+    { "name": "maestro-arm", "path": "robots/maestro-arm.json", "label": "Hobby 4-DoF arm (Maestro)" },
+    { "name": "turtlebot", "path": "robots/turtlebot.json", "label": "TurtleBot 4 (mobile base)" }
+  ]
+}
