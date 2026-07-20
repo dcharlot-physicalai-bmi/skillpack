@@ -51,6 +51,7 @@ envelope hold.
 | `skillcore.mjs` | pure logic — validate · **capability negotiation** · **safety envelope** (one source of truth) |
 | `skillkit.mjs` | the Node runtime — loader, transport binding to `hwbridge`, `bind()` |
 | `evalkit.mjs` | recovery-aware evaluation — closed-loop dynamics + disturbances → success, recovery, stability, failure taxonomy |
+| `bridge/mujoco_server.py` | physics-in-the-loop — a real MuJoCo rigid-body arm the runtime drives (`npm run test:mujoco`) |
 | `durable.mjs` | durable execution — checkpoint per waypoint, resume-without-redo, progress-aware rollback, HITL suspend |
 | `telemetry.mjs` | auditable run-trace — records every safety intervention (hold/clamp/cap), serializable + replayable |
 | `composite.mjs` | composite skills — a skill built from registered sub-skills, gated + safety-enveloped per step, durable |
@@ -118,3 +119,15 @@ WebGPU — the same policy verified two ways.)
 The VLAs are heavier (download + slower inference), so they're opt-in (`ONLY=smolvla` / `ONLY=pi05`); the
 default `npm run test:real` runs ACT + Diffusion and auto-skips cleanly without the venv. SmolVLA's tokenizer
 is open; the π-family's is the gated `google/paligemma-3b-pt-224` repo (one-time HF access approval).
+
+### Physics-in-the-loop (real MuJoCo dynamics)
+
+```
+npm run test:mujoco       # a skill drives a real MuJoCo arm through the safety envelope
+```
+
+`verify-mujoco.mjs` drives a **real MuJoCo 5-DoF rigid-body arm** (gravity, inertia, joint coupling) with the
+skill's safety-bounded commands and measures success on the **physical** joint state — not the kinematic
+approximation `evalkit.mjs` uses. The arm reaches its targets under real dynamics, every command stays within
+the velocity cap, and a hijacked policy cannot drive the physical arm out of bounds. Auto-skips without the
+venv (`npm run setup:lerobot` installs `mujoco`).
