@@ -64,6 +64,7 @@ envelope hold.
 | `skills/arm-pick-place/` | composes a **LeRobot ACT** checkpoint (`hf://lerobot/act_so101_pickplace`) |
 | `skills/arm-stack/` | composes a **LeRobot Diffusion Policy** checkpoint — same contract, ≥6 DoF |
 | `skills/mobile-goto/` | a **velocity**-action-space skill for a mobile base — the contract spans morphologies |
+| `skills/quadruped-trot/` | a **12-DoF CPG trot** — the contract spans legged robots (rhythmic, phase-correct, enveloped) |
 | `robots/*.json` | sample robot capability manifests |
 | `demo.html` | the live in-browser showcase (also at physicalai-bmi.org/research/skillpack) |
 
@@ -88,6 +89,7 @@ node verify-durable.mjs  # durable execution: checkpoint, resume-without-redo, H
 node verify-mobile.mjs   # cross-morphology: a velocity mobile base under a speed/accel envelope, same contract
 node verify-telemetry.mjs # every safety intervention recorded; trace serializable + replayable
 node verify-composite.mjs # skills compose (reach → grasp → carry), gated + enveloped per step, durable
+node verify-quadruped.mjs # legged morphology: a 12-DoF CPG trot, gated + enveloped, rhythmic + phase-correct
 node verify-authoring.mjs # the author->publish loop: new -> validate (safety-gated) -> build-registry -> installable
 ```
 

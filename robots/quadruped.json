@@ -1,0 +1,10 @@
+{
+  "name": "Quadruped (Go2-class, 12-DoF)",
+  "morphology": "quadruped",
+  "dof": 12,
+  "actuation": "position",
+  "sensors": ["proprioception", "imu"],
+  "control_rate_hz": 20,
+  "joint_ids": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+  "driver": { "target": "dynamixel" }
+}

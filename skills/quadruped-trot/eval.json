@@ -1,0 +1,7 @@
+{
+  "note": "Gait quality is evaluated in sim, not by a config-reach: the metric is gait regularity + phase correctness (diagonal pairs synchronized, adjacent legs in antiphase). verify-quadruped.mjs checks the rhythm and phase relationships through the safety envelope.",
+  "environment": "sim",
+  "metric": "gait_regularity",
+  "threshold": 0.8,
+  "episodes": []
+}

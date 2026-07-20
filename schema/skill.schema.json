@@ -72,7 +72,7 @@
         "ref": { "type": "string" },
         "metric": { "type": "string" },
         "threshold": { "type": "number" },
-        "environment": { "enum": ["node", "browser-webgpu", "lerobot-runtime", "hardware"] }
+        "environment": { "enum": ["node", "browser-webgpu", "lerobot-runtime", "sim", "hardware"] }
       }
     }
   }

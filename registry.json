@@ -68,12 +68,23 @@
       "policy": "analytic",
       "requires": { "morphology": "mobile", "min_dof": 2, "actuation": "velocity", "sensors": ["odometry"] },
       "summary": "A VELOCITY-action-space skill for a mobile base — the contract spans morphologies. Runs on the TurtleBot; gates off the arms."
+    },
+    {
+      "name": "quadruped-trot",
+      "title": "Trot gait for a 12-DoF quadruped",
+      "version": "0.1.0",
+      "path": "skills/quadruped-trot",
+      "files": ["skill.json", "policy.mjs", "eval.json"],
+      "policy": "analytic",
+      "requires": { "morphology": "quadruped", "min_dof": 12, "actuation": "position", "sensors": ["proprioception", "imu"] },
+      "summary": "A CPG trot gait for a legged robot — the contract spans quadrupeds too. Diagonal leg pairs in phase; every joint command bounded by the envelope."
     }
   ],
   "robots": [
     { "name": "so101", "path": "robots/so101.json", "label": "SO-101 (LeRobot · Feetech)" },
     { "name": "wx250", "path": "robots/wx250-dynamixel.json", "label": "WidowX-250 (Dynamixel)" },
     { "name": "maestro-arm", "path": "robots/maestro-arm.json", "label": "Hobby 4-DoF arm (Maestro)" },
-    { "name": "turtlebot", "path": "robots/turtlebot.json", "label": "TurtleBot 4 (mobile base)" }
+    { "name": "turtlebot", "path": "robots/turtlebot.json", "label": "TurtleBot 4 (mobile base)" },
+    { "name": "quadruped", "path": "robots/quadruped.json", "label": "Quadruped (Go2-class, 12-DoF)" }
   ]
 }

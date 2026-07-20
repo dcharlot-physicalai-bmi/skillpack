@@ -1,0 +1,31 @@
+{
+  "name": "quadruped-trot",
+  "version": "0.1.0",
+  "title": "Trot gait for a 12-DoF quadruped",
+  "summary": "A central-pattern-generator trot: diagonal leg pairs oscillate in phase, the other pair in antiphase, producing a rhythmic joint-target stream. Proves the contract spans LEGGED morphologies — same negotiation and safety envelope, a many-joint periodic policy.",
+  "task": "Trot forward",
+  "authors": ["Institute for Physical AI @ BMI"],
+  "license": "CC-BY-4.0",
+
+  "policy": { "kind": "analytic", "ref": "./policy.mjs", "observation": ["phase", "proprioception"], "action": "q_cmd" },
+
+  "requires": {
+    "morphology": "quadruped",
+    "min_dof": 12,
+    "actuation": "position",
+    "sensors": ["proprioception", "imu"],
+    "control_rate_hz": 20
+  },
+
+  "safety": { "max_step_norm": 0.08, "clamp": [0, 1], "estop": "crouch-and-hold", "watchdog_ms": 150 },
+
+  "io": { "action_space": "normalized-joint-position-0..1", "action_dim": "12 (4 legs × hip/thigh/calf)" },
+
+  "contract": {
+    "pre": ["robot standing, joints homed", "flat-ish ground"],
+    "post": ["a periodic, phase-correct gait (diagonal pairs synchronized)", "no per-tick step exceeded the cap"],
+    "invariants": ["every commanded joint within [0,1]", "no NaN reaches the driver"]
+  },
+
+  "eval": { "ref": "./eval.json", "metric": "gait_regularity", "threshold": 0.8, "environment": "sim" }
+}
