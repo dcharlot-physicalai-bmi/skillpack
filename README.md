@@ -54,6 +54,7 @@ envelope hold.
 | `bridge/mujoco_server.py` | physics-in-the-loop — a real MuJoCo rigid-body arm the runtime drives (`npm run test:mujoco`) |
 | `durable.mjs` | durable execution — checkpoint per waypoint, resume-without-redo, progress-aware rollback, HITL suspend |
 | `telemetry.mjs` | auditable run-trace — records every safety intervention (hold/clamp/cap), serializable + replayable |
+| `record.mjs` + `bridge/record_dataset.py` | record skill executions as a real LeRobotDataset (closes the learn loop) |
 | `composite.mjs` | composite skills — a skill built from registered sub-skills, gated + safety-enveloped per step, durable |
 | `fleet.mjs` | multi-robot coordination — barrier-synced heterogeneous fleet, per-robot safety isolation |
 | `bin/skillpack.mjs` | the CLI — `list · init · check · add · verify` |
@@ -92,6 +93,7 @@ node verify-durable.mjs  # durable execution: checkpoint, resume-without-redo, H
 node verify-mobile.mjs   # cross-morphology: a velocity mobile base under a speed/accel envelope, same contract
 node verify-telemetry.mjs # every safety intervention recorded; trace serializable + replayable
 node verify-composite.mjs # skills compose (reach → grasp → carry), gated + enveloped per step, durable
+node verify-record.mjs    # the learning loop: record a skill run -> a real LeRobotDataset (envelope-clean), ready to train
 node verify-quadruped.mjs # legged morphology: a 12-DoF CPG trot, gated + enveloped, rhythmic + phase-correct
 node verify-humanoid.mjs  # humanoid morphology: a 20-DoF capture-point balance, CoM kept in the support polygon
 node verify-fleet.mjs      # multi-robot: a heterogeneous 2-arm handoff, per-robot safety isolation
