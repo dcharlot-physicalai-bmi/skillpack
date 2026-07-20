@@ -26,5 +26,5 @@
     "invariants": ["every commanded value within [0,1]", "no NaN reaches the driver"]
   },
 
-  "eval": { "ref": "./eval.json", "metric": "reach_success_rate", "threshold": 0.8 }
+  "eval": { "ref": "./eval.json", "environment": "node", "metric": "reach_success_rate", "threshold": 0.8 }
 }

@@ -52,6 +52,7 @@
 
   "eval": {
     "ref": "./eval.json",
+    "environment": "node",
     "metric": "reach_success_rate",
     "threshold": 0.8
   }

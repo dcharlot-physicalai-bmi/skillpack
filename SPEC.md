@@ -118,3 +118,17 @@ every arm skill) and `verify-mobile.mjs` proves it: reaches its goals, never exc
 and a hijacked policy emitting `[NaN, 9999]` is still bounded to the speed limit. `verify-flywheel.mjs` now
 spans **position and velocity skills** across four robots — the whole registry, cross-morphology, safe by
 construction.
+
+## Conformance — the standard is the test suite
+
+An implementation is **skillpack-conformant** only if it passes the normative battery in
+[`conformance/`](conformance/README.md). Each requirement is the executable form of a MUST above: it
+carries its normative text, the section it comes from, and a test that runs against a *pluggable*
+implementation — so a third party certifies their own runtime/skills, not just this repo's.
+
+Two levels: **skill** conformance (a package declares a well-formed contract + safety envelope + eval and
+gates by capability) and **runtime** conformance (a runtime bounds *any* policy — including a hijacked one
+— inside the declared envelope, with a safe estop/reset). The runtime level is checked by driving a
+deliberately hijacked policy (NaN, ±Inf, wildly out-of-range) and asserting the envelope holds every tick.
+Run `skillpack conformance <dir>` to certify one skill, or `skillpack conformance` for the full battery;
+`conformanceReport({ skill, robot, core, runtime })` runs it against your implementation directly.

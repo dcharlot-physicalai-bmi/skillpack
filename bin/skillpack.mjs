@@ -230,7 +230,35 @@ function verify() {
   process.exit(r.status || 0);
 }
 
-const CMDS = { list, init, check, add, verify, new: newSkill, validate, 'build-registry': buildRegistry };
+// Run the normative conformance battery. With a skill dir → certify that skill (skill + runtime levels)
+// on a capability-matched sample robot. With no arg → run the full reference-implementation battery.
+async function conformance() {
+  const dir = pos[0];
+  if (!dir) {
+    const r = spawnSync('node', [resolve(PKG, 'verify-conformance.mjs'), ...(flags.report ? ['--report'] : [])], { stdio: 'inherit' });
+    process.exit(r.status || 0);
+  }
+  const { loadSkill, bind } = await import('../skillkit.mjs');
+  const { conformanceReport } = await import('../conformance/run.mjs');
+  let skill; try { skill = await loadSkill(resolve(dir)); } catch (e) { die(`invalid: ${e.message}`); }
+  const reg = await loadRegistry();
+  const robots = []; for (const rr of reg.robots) robots.push(JSON.parse(await readFrom(REG, rr.path)));
+  const robot = robots.find((rb) => matchRobot(skill.manifest, rb).ok);
+  if (!robot) die('no sample robot satisfies requires{} — cannot run runtime conformance. Fix the manifest or pass a registry with a compatible robot.');
+  const report = await conformanceReport({ skill, robot, core: { validateSkill, matchRobot }, runtime: { bind } });
+  console.log(c('b', `\nconformance ${skill.manifest.name}@${skill.manifest.version}`) + c('d', ` · runtime robot: ${robot.name}`));
+  for (const r of report.results) {
+    const mark = r.status === 'pass' ? c('g', '✓') : r.status === 'n/a' ? c('d', '○') : c('y', '✗');
+    console.log(`  ${mark} ${c('d', r.level === 'skill' ? '[skill]  ' : '[runtime]')} ${r.id}  ${c('d', r.detail)}`);
+  }
+  const { pass, fail, 'n/a': na } = report.counts;
+  console.log(report.conformant
+    ? c('g', `\n✓ CONFORMANT`) + c('d', ` — ${pass} passed, ${na} n/a. This skill meets the skillpack standard.\n`)
+    : c('y', `\n✗ NOT CONFORMANT`) + ` — ${fail} requirement(s) failed.\n`);
+  process.exit(report.conformant ? 0 : 1);
+}
+
+const CMDS = { list, init, check, add, verify, conformance, new: newSkill, validate, 'build-registry': buildRegistry };
 if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
   console.log(`${c('b', 'skillpack')} — the open robot-skill CLI\n
 ${c('d', 'use a skill')}
@@ -241,6 +269,7 @@ ${c('d', 'use a skill')}
 ${c('d', 'author a skill')}
   ${c('gold', 'new')} <name> [--morphology arm --dof 5 --policy analytic]   scaffold a skill you own
   ${c('gold', 'validate')} <dir>          schema + capability + the safety gate (hijacked policy stays bounded)
+  ${c('gold', 'conformance')} [dir]       run the normative standard: [dir] certifies one skill, no-arg = full battery
   ${c('gold', 'build-registry')}          regenerate registry.json from skills/ and robots/
   ${c('gold', 'verify')}                  run the skillpack self-test
 ${c('d', '\n  --registry <path|url>   --robot <file>')}`);

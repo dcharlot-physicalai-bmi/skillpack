@@ -32,5 +32,5 @@
     "invariants": ["|velocity| <= max_speed_norm", "no per-tick velocity change exceeds max_accel_norm", "no NaN reaches the driver"]
   },
 
-  "eval": { "ref": "./eval.json", "metric": "goto_success_rate", "threshold": 0.8 }
+  "eval": { "ref": "./eval.json", "environment": "node", "metric": "goto_success_rate", "threshold": 0.8 }
 }
