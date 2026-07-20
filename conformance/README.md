@@ -68,3 +68,16 @@ report.results;     // [{ id, level, must, spec, status, detail }]
 A conformant `bind` must return a runtime exposing at least: `envelope:{lo,hi,maxStep}`, `symmetric`,
 `step(obs)→{q,wire}`, `estop()`, `reset()`, `state()`. If yours does, and it passes this battery, it is
 skillpack-conformant — and your skills will interoperate with everyone else's.
+
+## Is the battery real? (interop validation)
+
+A conformance suite that nothing can fail is theater. [`interop/miniruntime.mjs`](../interop/miniruntime.mjs)
+is a **second, clean-room runtime** that shares no code with the reference `skillkit` — its own envelope
+math, clamp, and wire encoder. [`verify-interop.mjs`](../verify-interop.mjs) proves both directions:
+
+- **(A) Independence** — `miniruntime` passes the runtime battery across position, velocity, and torque, so
+  "skillpack-conformant" is a real, portable contract, not a description of one codebase.
+- **(B) Teeth** — a set of runtimes each broken in exactly one way (no clamp, no rate cap, NaN leak, bad
+  estop, bad reset, symmetric non-zero start) are each *caught by the intended requirement*.
+
+Both run in `npm test`, so the standard's own tests are continuously validated.
