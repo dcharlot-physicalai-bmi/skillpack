@@ -7,11 +7,14 @@
 //   skillpack init [--robot so101]       scaffold ./robot.json (your robot's capability manifest)
 //   skillpack check <skill>              dry-run: will <skill> run on ./robot.json?
 //   skillpack add <skill> [--force]      capability-gated install of <skill> into ./skills/<skill>/
+//   skillpack new <name> [--morphology arm --dof 5 --policy analytic]   scaffold a skill you own
+//   skillpack validate <dir>             schema + capability + the safety gate (hijacked policy stays bounded)
+//   skillpack build-registry             regenerate registry.json from skills/ and robots/
 //   skillpack verify                     run the skillpack self-test
 //
 // --registry <path|url>  point at a different registry (default: this package). --robot <file>  manifest.
 
-import { readFile, writeFile, mkdir, cp } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, cp, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -122,18 +125,122 @@ async function add() {
   console.log(c('d', `  policy: ${s.policy}${s.policy === 'vla' ? ' (SmolVLA weights load in-browser on WebGPU)' : ''}\n`));
 }
 
+// ── author side: scaffold a new skill you own ──
+function policyTemplate(velocity) {
+  return velocity
+    ? `// analytic velocity policy — proposes velocity toward the goal; the runtime bounds speed + accel.\nexport function create(skill, robot) {\n  const dof = robot.dof, K = 3.0;\n  return { reset() {}, step(obs) {\n    const p = obs.pose || obs.q || new Array(dof).fill(0), g = obs.goal || obs.q_target || new Array(dof).fill(0);\n    return Array.from({ length: dof }, (_, i) => K * ((g[i] ?? 0) - (p[i] ?? 0)));\n  } };\n}\n`
+    : `// analytic policy — proposes the target config; the runtime ramps it under the velocity cap.\nexport function create(skill, robot) {\n  const dof = robot.dof;\n  return { reset() {}, step(obs) { const qt = obs.q_target; return Array.from({ length: dof }, (_, i) => qt[i]); } };\n}\n`;
+}
+function evalTemplate(dof, velocity) {
+  const rnd = (i) => +(0.2 + 0.5 * ((i * 37) % 100) / 100).toFixed(2);
+  const ep = (o) => ({ q0: Array.from({ length: dof }, (_, i) => 0.5), q_target: Array.from({ length: dof }, (_, i) => rnd(i + o)) });
+  return { note: 'TODO: reproducible episodes for this skill.', tolerance: 0.03, max_ticks: velocity ? 120 : 80, dof, episodes: [ep(1), ep(4), ep(7)] };
+}
+
+async function newSkill() {
+  const name = pos[0]; if (!name) die('usage: skillpack new <name> [--morphology arm --dof 5 --policy analytic]');
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) die('skill name must be kebab-case (a-z, 0-9, -)');
+  const dir = resolve('./skills', name);
+  if (existsSync(dir) && !flags.force) die(`skills/${name}/ already exists (use --force).`);
+  const morphology = flags.morphology || 'arm';
+  const dof = +(flags.dof || (morphology === 'mobile' ? 2 : 5));
+  const actuation = flags.actuation || (morphology === 'mobile' ? 'velocity' : 'position');
+  const velocity = actuation === 'velocity';
+  const kind = flags.policy || 'analytic';
+  const policy = kind === 'lerobot'
+    ? { kind: 'lerobot', ref: '../../policies/lerobot.mjs', checkpoint: 'hf://lerobot/TODO', observation: ['images', 'state'], action: 'q_cmd' }
+    : { kind, ref: kind === 'analytic' ? './policy.mjs' : './policy.mjs', observation: velocity ? ['pose', 'goal'] : ['q', 'q_target'], action: velocity ? 'velocity' : 'q_cmd' };
+  const skill = {
+    name, version: '0.1.0', title: `TODO: what ${name} does`, summary: 'TODO: one line.',
+    task: 'TODO', authors: ['TODO'], license: 'CC-BY-4.0', policy,
+    requires: { morphology, min_dof: dof, actuation, sensors: velocity ? ['odometry'] : ['proprioception', 'target_pose'], control_rate_hz: 20 },
+    safety: velocity ? { max_speed_norm: 0.6, max_accel_norm: 0.15, estop: 'zero-velocity', watchdog_ms: 200 }
+                     : { max_step_norm: 0.08, clamp: [0, 1], estop: 'zero-velocity-hold', watchdog_ms: 250 },
+    io: { action_space: velocity ? 'normalized-velocity' : 'normalized-joint-position-0..1', action_dim: 'robot.dof' },
+    contract: { pre: ['TODO'], post: ['reaches the goal within tolerance', 'no per-tick step exceeded the cap'], invariants: ['every command within range', 'no NaN reaches the driver'] },
+    eval: { ref: './eval.json', metric: 'success_rate', threshold: 0.8 },
+  };
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, 'skill.json'), JSON.stringify(skill, null, 2) + '\n');
+  if (kind === 'analytic') await writeFile(join(dir, 'policy.mjs'), policyTemplate(velocity));
+  await writeFile(join(dir, 'eval.json'), JSON.stringify(evalTemplate(dof, velocity), null, 2) + '\n');
+  console.log(c('g', '✓ ') + `scaffolded ` + c('b', `skills/${name}/`) + c('d', ` (${morphology} · ${dof}-DoF · ${actuation} · ${kind})`));
+  console.log(c('d', `  fill in the TODOs, then: skillpack validate ./skills/${name}\n`));
+}
+
+// ── validate a candidate skill: schema, capability sanity, and THE safety gate ──
+async function validate() {
+  const dir = pos[0]; if (!dir) die('usage: skillpack validate <skill-dir>');
+  const { loadSkill, bind } = await import('../skillkit.mjs');
+  let skill; try { skill = await loadSkill(resolve(dir)); } catch (e) { die(`invalid: ${e.message}`); }
+  const m = skill.manifest;
+  console.log(c('b', `\nvalidate ${m.name}@${m.version}`));
+  console.log('  ' + c('g', '✓ ') + 'manifest valid — required fields + a well-formed safety envelope');
+  const reg = await loadRegistry();
+  const robots = []; for (const r of reg.robots) robots.push(JSON.parse(await readFrom(REG, r.path)));
+  const compatible = robots.filter((rb) => matchRobot(m, rb).ok);
+  if (compatible.length) console.log('  ' + c('g', '✓ ') + `runs on: ${compatible.map((r) => r.name).join(', ')}`);
+  else console.log('  ' + c('y', '! ') + 'no sample robot satisfies requires{} — double-check morphology/dof/sensors');
+  const robot = compatible[0];
+  if (robot) {
+    const velocity = m.requires.actuation === 'velocity';
+    const [lo, hi] = velocity ? [-m.safety.max_speed_norm, m.safety.max_speed_norm] : [0, 1];
+    const evil = { ...skill, policyMod: { create: () => ({ step: () => Array.from({ length: robot.dof }, (_, i) => [NaN, 9, -5, Infinity, 42][i % 5]) }) } };
+    const rt = await bind(evil, robot, {});
+    let bad = false;
+    for (let k = 0; k < 30; k++) { const t = rt.step({}); if (!(t.wire && t.wire.data && t.wire.data.length) || t.q.some((v) => v < lo - 1e-9 || v > hi + 1e-9 || !Number.isFinite(v))) bad = true; }
+    if (bad) die('SAFETY GATE FAILED — a hijacked policy escaped the envelope. Not safe to publish.');
+    console.log('  ' + c('g', '✓ ') + 'safety envelope holds against a hijacked policy (bounded, valid wire)');
+  }
+  console.log(c('g', '\n✓ valid') + c('d', ' — run `skillpack build-registry`, then open a PR.\n'));
+}
+
+// ── maintainer side: regenerate registry.json from the skills/ and robots/ dirs ──
+async function buildRegistry() {
+  if (isUrl(REG)) die('build-registry works on a local registry directory, not a URL.');
+  const base = resolve(REG);
+  const skills = [];
+  for (const name of (await readdir(join(base, 'skills'))).sort()) {
+    const sdir = join(base, 'skills', name);
+    if (!existsSync(join(sdir, 'skill.json'))) continue;
+    const m = JSON.parse(await readFile(join(sdir, 'skill.json'), 'utf8'));
+    const files = (await readdir(sdir)).filter((f) => /\.(json|mjs)$/.test(f)).sort();
+    const r = m.requires;
+    const entry = { name: m.name, title: m.title, version: m.version, path: `skills/${name}`, files, policy: m.policy.kind,
+      requires: { morphology: r.morphology, min_dof: r.min_dof, actuation: r.actuation, sensors: r.sensors }, summary: m.summary };
+    if (m.policy.checkpoint) entry.checkpoint = m.policy.checkpoint;
+    if (m.policy.kind === 'lerobot') entry.runtime = '@skillpack/lerobot (shared adapter)';
+    skills.push(entry);
+  }
+  const robots = [];
+  for (const f of (await readdir(join(base, 'robots'))).sort()) if (f.endsWith('.json')) {
+    const r = JSON.parse(await readFile(join(base, 'robots', f), 'utf8'));
+    robots.push({ name: f.replace(/\.json$/, ''), path: `robots/${f}`, label: r.name });
+  }
+  const prev = existsSync(join(base, 'registry.json')) ? JSON.parse(await readFile(join(base, 'registry.json'), 'utf8')) : {};
+  const reg = { $schema: prev.$schema, name: prev.name || 'skillpack-registry', version: prev.version || '0.2.0',
+    homepage: prev.homepage, description: prev.description, skills, robots };
+  await writeFile(join(base, 'registry.json'), JSON.stringify(reg, null, 2) + '\n');
+  console.log(c('g', '✓ ') + `built registry.json` + c('d', ` — ${skills.length} skills, ${robots.length} robots`));
+}
+
 function verify() {
   const r = spawnSync('node', [resolve(PKG, 'verify.mjs')], { stdio: 'inherit' });
   process.exit(r.status || 0);
 }
 
-const CMDS = { list, init, check, add, verify };
+const CMDS = { list, init, check, add, verify, new: newSkill, validate, 'build-registry': buildRegistry };
 if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
   console.log(`${c('b', 'skillpack')} — the open robot-skill CLI\n
+${c('d', 'use a skill')}
   ${c('gold', 'list')}                    browse the registry
   ${c('gold', 'init')} [--robot so101]    scaffold ./robot.json (your capability manifest)
   ${c('gold', 'check')} <skill>           will <skill> run on ./robot.json?
   ${c('gold', 'add')} <skill> [--force]   capability-gated install of <skill> as source
+${c('d', 'author a skill')}
+  ${c('gold', 'new')} <name> [--morphology arm --dof 5 --policy analytic]   scaffold a skill you own
+  ${c('gold', 'validate')} <dir>          schema + capability + the safety gate (hijacked policy stays bounded)
+  ${c('gold', 'build-registry')}          regenerate registry.json from skills/ and robots/
   ${c('gold', 'verify')}                  run the skillpack self-test
 ${c('d', '\n  --registry <path|url>   --robot <file>')}`);
   process.exit(0);

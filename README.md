@@ -27,6 +27,18 @@ The install is **capability-gated** — the twist only robots need. `skillpack a
 your `robot.json` and **refuses (with reasons)** if it won't run, so you never install a skill your body
 can't safely execute. That is friction-zero adoption (the shadcn mechanic) plus a safety gate.
 
+**Author a skill** (the other half of the loop):
+
+```bash
+node bin/skillpack.mjs new my-grasp --morphology arm --dof 5   # scaffold skills/my-grasp/ (manifest + policy + eval)
+node bin/skillpack.mjs validate ./skills/my-grasp             # schema + capability + the SAFETY GATE
+node bin/skillpack.mjs build-registry                         # regenerate registry.json, then open a PR
+```
+
+`validate` runs the same safety gate the registry does: it drives a **hijacked policy** through your skill's
+runtime and confirms the envelope still bounds it. A skill that can't hold the envelope doesn't validate —
+so an open registry only ever grows with skills that are safe by construction.
+
 **Live demo:** open `demo.html` — pick a robot, watch the registry gate skills against it, install one and
 run its policy through the safety envelope to real wire bytes, then *corrupt the policy* and watch the
 envelope hold.
@@ -75,6 +87,7 @@ node verify-durable.mjs  # durable execution: checkpoint, resume-without-redo, H
 node verify-mobile.mjs   # cross-morphology: a velocity mobile base under a speed/accel envelope, same contract
 node verify-telemetry.mjs # every safety intervention recorded; trace serializable + replayable
 node verify-composite.mjs # skills compose (reach → grasp → carry), gated + enveloped per step, durable
+node verify-authoring.mjs # the author->publish loop: new -> validate (safety-gated) -> build-registry -> installable
 ```
 
 All run with no robot and no GPU (SmolVLA's 450M weights run in-browser on WebGPU; the Node harness
