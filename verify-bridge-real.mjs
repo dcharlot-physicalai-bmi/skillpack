@@ -27,14 +27,16 @@ const h = (s) => `\n\x1b[1m${s}\x1b[0m`;
 const ALL = [
   { type: 'act',       ckpt: 'lerobot/act_aloha_sim_transfer_cube_human', ticks: 20, readyMs: 120000 },
   { type: 'diffusion', ckpt: 'lerobot/diffusion_pusht',                    ticks: 20, readyMs: 120000 },
-  // π0.5 (the current pi-series checkpoint) is a 3B VLA — heavy (~11 GB download, minutes/inference) and its
-  // tokenizer is the gated google/paligemma-3b-pt-224 repo (needs one-time HF access approval). Fully wired;
-  // opt-in via ONLY=pi05 so the default run stays fast. (pi0 / pi0fast also wired.)
-  { type: 'pi05',      ckpt: 'lerobot/pi05_base', task: 'pick up the object', ticks: 3, readyMs: 1200000 },
+  // Real VLAs — heavier (download + slower inference), so opt-in to keep the default run fast:
+  //  · SmolVLA — 450M, OPEN tokenizer (HuggingFaceTB/SmolVLM2), no gate. ONLY=smolvla
+  //  · π0.5 — 3B, gated google/paligemma-3b-pt-224 tokenizer (one-time HF access). ONLY=pi05
+  // (pi0 / pi0fast also wired.)
+  { type: 'smolvla',   ckpt: 'lerobot/smolvla_base', task: 'pick up the object', ticks: 5, readyMs: 300000 },
+  { type: 'pi05',      ckpt: 'lerobot/pi05_base',    task: 'pick up the object', ticks: 3, readyMs: 1200000 },
 ];
-const PI = new Set(['pi0', 'pi05', 'pi0fast']);
+const HEAVY = new Set(['pi0', 'pi05', 'pi0fast', 'smolvla']);   // real VLAs — opt-in via ONLY=<type>
 const only = (process.env.ONLY || '').split(',').filter(Boolean);
-const CHECKPOINTS = only.length ? ALL.filter((c) => only.includes(c.type)) : ALL.filter((c) => !PI.has(c.type));
+const CHECKPOINTS = only.length ? ALL.filter((c) => only.includes(c.type)) : ALL.filter((c) => !HEAVY.has(c.type));
 
 if (!existsSync(VENV_PY)) {
   console.log(h('verify-bridge-real — SKIPPED'));
@@ -84,7 +86,8 @@ for (const c of CHECKPOINTS) {
   }
 }
 
-const ok = fails === 0 && realTested >= 2;   // require at least two real architectures verified
+const need = Math.min(2, CHECKPOINTS.length);       // default (act+diffusion) needs 2; a narrowed run needs its own
+const ok = fails === 0 && realTested >= need;       // never vacuously pass on all-skips
 console.log(h(ok
   ? `✅ WEIGHT-VERIFIED across ${realTested} real architectures — every checkpoint's actions bounded by the safety envelope`
   : fails > 0 ? `❌ ${fails} check(s) failed` : `❌ only ${realTested} real architecture(s) loaded (need ≥2)`));

@@ -20,8 +20,9 @@ POLICY_CLASSES = {
     "pi0":       ("lerobot.policies.pi0.modeling_pi0", "PI0Policy"),
     "pi05":      ("lerobot.policies.pi05.modeling_pi05", "PI05Policy"),
     "pi0fast":   ("lerobot.policies.pi0_fast.modeling_pi0_fast", "PI0FastPolicy"),
+    "smolvla":   ("lerobot.policies.smolvla.modeling_smolvla", "SmolVLAPolicy"),
 }
-LANGUAGE_POLICIES = {"pi0", "pi05", "pi0fast"}   # need the task tokenized via the preprocessor
+LANGUAGE_POLICIES = {"pi0", "pi05", "pi0fast", "smolvla"}   # need the task tokenized via the preprocessor
 
 
 def load_policy(checkpoint, policy_type):
@@ -42,7 +43,11 @@ def load_policy(checkpoint, policy_type):
         preprocessor = None
         if policy_type in LANGUAGE_POLICIES:
             from lerobot.policies.factory import make_pre_post_processors
-            preprocessor, _ = make_pre_post_processors(policy.config, pretrained_path=repo)
+            # some checkpoints save a preprocessor with device='cuda' hardcoded — redirect to this device.
+            preprocessor, _ = make_pre_post_processors(
+                policy.config, pretrained_path=repo,
+                preprocessor_overrides={"device_processor": {"device": str(device)}},
+            )
 
         def real(obs):
             batch = {}
