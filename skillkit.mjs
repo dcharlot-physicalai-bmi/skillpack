@@ -6,6 +6,7 @@
 // own it. skillkit does not reimplement codecs; it binds to them.
 
 import { readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { validateSkill, matchRobot, safetyClamp } from './skillcore.mjs';
@@ -17,7 +18,12 @@ export { validateSkill, matchRobot, safetyClamp };
 globalThis.navigator ??= {};
 globalThis.window ??= {};
 const HERE = dirname(fileURLToPath(import.meta.url));
-const HWBRIDGE = resolve(HERE, 'drivers/hwbridge.js');
+// resolve the driver registry from the standalone repo (vendored) or the site tree — same file either
+// place, so skillkit is identical in both and needs no per-copy re-pointing.
+const HWBRIDGE = [
+  resolve(HERE, 'drivers/hwbridge.js'),                       // standalone repo
+  resolve(HERE, '../public/assets/islands/lib/hwbridge.js'),  // embedded in the site tree
+].find((p) => existsSync(p)) || resolve(HERE, 'drivers/hwbridge.js');
 
 let _hw = null;
 export async function driverRegistry() {
