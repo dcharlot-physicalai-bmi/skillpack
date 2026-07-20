@@ -24,19 +24,21 @@ export function connectLeRobot(checkpoint = 'mock', { python = 'python3', policy
       if (w) { try { w.resolve(JSON.parse(line)); } catch (e) { w.reject(e); } }
     }
   });
-  let ready = null;
+  let ready = null, mode = 'unknown';
   const readyP = new Promise((res) => { ready = res; });
-  proc.stderr.on('data', (d) => { if (/ready ·/.test(d.toString())) ready(); });
+  proc.stderr.on('data', (d) => { const s = d.toString(); const m = s.match(/mode=(\S+)/); if (m) mode = m[1]; if (/ready ·/.test(s)) ready(); });
 
   const rpc = (obj) => new Promise((resolve, reject) => { waiters.push({ resolve, reject }); proc.stdin.write(JSON.stringify(obj) + '\n'); });
 
   return {
     ready: () => readyP,
+    mode: () => mode,                    // 'lerobot:<type>' when real weights loaded, else 'mock'
     // the backend the lerobot adapter expects
     async selectAction(obs) {
       const state = obs && (obs.state || obs.q);
       const target = obs && obs.q_target;
-      const r = await rpc({ method: 'select_action', obs: { state, target } });
+      const task = obs && obs.task;
+      const r = await rpc({ method: 'select_action', obs: { state, target, task } });
       return r.action;
     },
     reset: () => rpc({ method: 'reset' }),

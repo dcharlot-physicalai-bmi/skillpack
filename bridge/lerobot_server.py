@@ -13,10 +13,11 @@ is what bounds them.
 """
 import sys, json, argparse
 
-# policy_type -> (module, class). Extend as LeRobot adds architectures; all share .select_action(obs).
+# policy_type -> (module, class). Extend as LeRobot adds architectures; all share .select_action(batch).
 POLICY_CLASSES = {
     "act":       ("lerobot.policies.act.modeling_act", "ACTPolicy"),
     "diffusion": ("lerobot.policies.diffusion.modeling_diffusion", "DiffusionPolicy"),
+    "pi0":       ("lerobot.policies.pi0.modeling_pi0", "PI0Policy"),
 }
 
 
@@ -33,6 +34,13 @@ def load_policy(checkpoint, policy_type):
         device = next(policy.parameters()).device
         feats = policy.config.input_features  # name -> feature(shape, type)
 
+        # language-conditioned policies (pi0) need their task string TOKENIZED into language tokens; the
+        # lerobot preprocessor pipeline does that (and normalization). ACT/Diffusion self-normalize.
+        preprocessor = None
+        if policy_type == "pi0":
+            from lerobot.policies.factory import make_pre_post_processors
+            preprocessor, _ = make_pre_post_processors(policy.config, pretrained_path=repo)
+
         def real(obs):
             batch = {}
             for name, ft in feats.items():
@@ -43,6 +51,10 @@ def load_policy(checkpoint, policy_type):
                     batch[name] = torch.tensor([st], dtype=torch.float32, device=device)
                 else:
                     batch[name] = torch.zeros((1,) + shape, dtype=torch.float32, device=device)  # e.g. camera
+            if obs.get("task") is not None or policy_type == "pi0":
+                batch["task"] = [obs.get("task") or "reach the target"]
+            if preprocessor is not None:
+                batch = preprocessor(batch)                            # tokenize task -> language tokens
             with torch.no_grad():
                 act = policy.select_action(batch)
             return act.squeeze(0).float().cpu().tolist()

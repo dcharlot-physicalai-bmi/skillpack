@@ -80,15 +80,24 @@ node verify-composite.mjs # skills compose (reach → grasp → carry), gated + 
 All run with no robot and no GPU (SmolVLA's 450M weights run in-browser on WebGPU; the Node harness
 validates the contract + safety wrapping with a stand-in forward pass).
 
-### Weight-verified (real LeRobot checkpoint)
+### Weight-verified across real LeRobot architectures
 
 ```
-npm run setup:lerobot     # python3.13 venv + pip install lerobot  (needs Python >= 3.12)
-npm run test:real         # drives a skill with a REAL lerobot ACT checkpoint through the envelope
+npm run setup:lerobot     # python3.13 venv + pip install lerobot diffusers transformers  (Python >= 3.12)
+npm run test:real         # drives skills with REAL lerobot checkpoints through the envelope
 ```
 
-`verify-bridge-real.mjs` loads `lerobot/act_aloha_sim_transfer_cube_human`, pulls a real 14-dim action out
-of `.select_action()` each tick, and runs it through the skillpack safety envelope to a valid wire packet.
-The real actions fall **outside** [0,1] (a checkpoint not trained for this arm) — and the runtime **bounds
-them**: valid wire, in range, within the velocity cap. That is the safety guarantee, verified on real
-weights. `npm run test:real` auto-skips cleanly if the lerobot venv isn't present.
+`verify-bridge-real.mjs` loads **real checkpoints of different architectures** and, each tick, pulls a real
+action out of `.select_action()` and runs it through the skillpack safety envelope to a valid wire packet:
+
+- **ACT** — `lerobot/act_aloha_sim_transfer_cube_human` (14-dim action)
+- **Diffusion Policy** — `lerobot/diffusion_pusht` (2-dim action)
+
+The real actions fall **outside** [0,1] (checkpoints not trained for this arm) — and the runtime **bounds
+them**: valid wire, in range, within the velocity cap. The safety guarantee, weight-verified across
+architectures. Each checkpoint runs only if its real weights actually load (the bridge reports the mode);
+otherwise it's skipped honestly, never faked. `npm run test:real` auto-skips cleanly without the venv.
+
+**π0** is also fully wired (`policy-type pi0` + the language-token preprocessor), but its tokenizer is the
+**gated** `google/paligemma-3b-pt-224` repo — running it needs Hugging Face access approval to that Google
+model. Once you have access: `ONLY=pi0 npm run test:real`.
