@@ -55,6 +55,7 @@ envelope hold.
 | `durable.mjs` | durable execution — checkpoint per waypoint, resume-without-redo, progress-aware rollback, HITL suspend |
 | `telemetry.mjs` | auditable run-trace — records every safety intervention (hold/clamp/cap), serializable + replayable |
 | `composite.mjs` | composite skills — a skill built from registered sub-skills, gated + safety-enveloped per step, durable |
+| `fleet.mjs` | multi-robot coordination — barrier-synced heterogeneous fleet, per-robot safety isolation |
 | `bin/skillpack.mjs` | the CLI — `list · init · check · add · verify` |
 | `registry.json` | the registry index (skills + sample robots) |
 | `policies/lerobot.mjs` | shared adapter — drives **any** LeRobot checkpoint via `.select_action(obs)` |
@@ -90,6 +91,7 @@ node verify-mobile.mjs   # cross-morphology: a velocity mobile base under a spee
 node verify-telemetry.mjs # every safety intervention recorded; trace serializable + replayable
 node verify-composite.mjs # skills compose (reach → grasp → carry), gated + enveloped per step, durable
 node verify-quadruped.mjs # legged morphology: a 12-DoF CPG trot, gated + enveloped, rhythmic + phase-correct
+node verify-fleet.mjs      # multi-robot: a heterogeneous 2-arm handoff, per-robot safety isolation
 node verify-authoring.mjs # the author->publish loop: new -> validate (safety-gated) -> build-registry -> installable
 ```
 
