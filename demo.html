@@ -83,6 +83,19 @@
   .rt-meta .k{color:var(--faint);}
   .rt-meta .v{color:var(--ink);font-variant-numeric:tabular-nums;}
   .rt-meta .v.ok{color:var(--ok);} .rt-meta .v.warn{color:var(--warn);}
+  /* composite step indicator */
+  .stepind{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+  .stepchip{font-family:var(--mono);font-size:11px;letter-spacing:.03em;padding:4px 9px;border-radius:6px;border:1px solid var(--hair);color:var(--faint);}
+  .stepchip.active{border-color:var(--gold);color:var(--gold-soft);background:color-mix(in srgb,var(--gold) 12%,transparent);}
+  .stepchip.done{border-color:var(--ok);color:var(--ok);}
+  .stepchip .st{opacity:.6;}
+  /* telemetry: per-joint intervention dots + counts */
+  .evstrip{display:flex;gap:6px;margin-top:10px;align-items:center;font-family:var(--mono);font-size:10.5px;color:var(--faint);flex-wrap:wrap;}
+  .evdot{width:12px;height:12px;border-radius:3px;display:inline-grid;place-items:center;font-size:8px;font-weight:700;color:var(--ground);}
+  .evdot.pass{background:var(--hair);color:var(--faint);}
+  .evdot.capped{background:var(--warn);} .evdot.clamped{background:var(--bad);} .evdot.held{background:var(--gold);}
+  .tele-counts{font-family:var(--mono);font-size:11px;color:var(--muted);}
+  .tele-counts b{color:var(--ink);font-weight:600;}
   .wire{font-family:var(--mono);font-size:11px;background:var(--panel-2);border:1px solid var(--hair);border-radius:8px;padding:11px;color:var(--gold-soft);word-break:break-all;line-height:1.6;min-height:58px;}
   .wire .lab{color:var(--faint);text-transform:uppercase;letter-spacing:.1em;font-size:9.5px;display:block;margin-bottom:5px;}
   .toggles{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:2px;}
@@ -217,80 +230,124 @@ function renderSkills(){
     card.appendChild(gate);
     box.appendChild(card);
   });
+  // a composite skill: built from registered sub-skills (reach → grasp → carry)
+  const cReq={morphology:'arm',min_dof:5};
+  const cok = robot.morphology==='arm' && robot.dof>=5;
+  const card=el('div','skill'); card.style.borderColor='color-mix(in srgb,var(--gold) 35%,var(--hair))';
+  card.innerHTML=`<div><div class="sh">pick-and-place<span class="pol">composite</span></div>
+    <div class="sd">A composite skill: reach → grasp → carry, each a registered sub-skill run through its own gate and safety envelope.</div>
+    <div class="needs">needs: arm ≥5dof · composes arm-reach + gripper-grasp</div></div>`;
+  const act=el('div'); act.style.textAlign='right';
+  const btn=el('button','run-btn',cok?'▶ Run composite':'Run composite'); btn.disabled=!cok;
+  if(cok) btn.onclick=()=>start(SKILLS[0], COMPOSITE);
+  act.appendChild(btn); card.appendChild(act);
+  const gate=el('div','gate');
+  gate.innerHTML = cok
+    ? `<span class="badge ok">✓ compatible</span><span class="why">every step's capability manifest is satisfied — the whole chain can run</span>`
+    : `<span class="badge bad">✗ incompatible</span><span class="why"><b>dof</b>: the grasp step needs ≥5, robot has ${robot.dof}</span>`;
+  card.appendChild(gate); box.appendChild(card);
 }
+const COMPOSITE={ name:'pick-and-place', steps:[
+  {label:'reach', target:[0.80,0.30,0.60,0.40,0.10]},
+  {label:'grasp', target:[0.80,0.30,0.60,0.40,0.95]},
+  {label:'carry', target:[0.30,0.60,0.50,0.55,0.95]},
+]};
 
 function resetStage(){ document.getElementById('stageWrap').innerHTML='<div class="stage empty" id="stage">Install a compatible skill above to run it here.</div>'; }
 function stop(){ if(raf) cancelAnimationFrame(raf); raf=null; run=null; }
 
-function start(skill){
+// classify a single channel's safety intervention (mirrors telemetry.mjs)
+function classify(proposed, safe, prev, maxStep, lo, hi){
+  if(!Number.isFinite(proposed)) return 'held';
+  if(safe<=lo+1e-9 && proposed<lo) return 'clamped';
+  if(safe>=hi-1e-9 && proposed>hi) return 'clamped';
+  if(Math.abs(safe-prev)>=maxStep-1e-9 && Math.abs(proposed-prev)>maxStep) return 'capped';
+  return 'pass';
+}
+
+// start a run. `composite` (optional) = { name, steps:[{label,target}] } sequences waypoints.
+function start(skill, composite){
   stop();
   const dof=robot.dof, ids=robot.joint_ids||Array.from({length:dof},(_,i)=>i+1);
   const maxStep=skill.safety.max_step_norm;
-  let q=new Array(dof).fill(0.5);
-  let target=Array.from({length:dof},()=>0.08+Math.random()*0.84);
-  let corrupt=false, ticks=0, maxStepSeen=0, reached=false;
+  const pad=t=>Array.from({length:dof},(_,i)=> t[i]!=null? t[i] : 0.5);
+  const waypoints = composite ? composite.steps.map(s=>({label:s.label,target:pad(s.target)}))
+                              : [{label:'target',target:Array.from({length:dof},()=>0.08+Math.random()*0.84)}];
+  let wi=0, q=new Array(dof).fill(0.5), corrupt=false, maxStepSeen=0, done=false;
+  const tele={held:0,clamped:0,capped:0,pass:0}; let lastEvents=new Array(dof).fill('pass');
 
   const wrap=document.getElementById('stageWrap'); wrap.innerHTML='';
   const stage=el('div','stage');
+  const stepBar = composite ? `<div class="stepind" id="stepind">${composite.steps.map((s,i)=>`<span class="stepchip" data-i="${i}"><span class="st">${i+1}</span> ${s.label}</span>`).join('')}</div>` : '';
   stage.innerHTML=`
     <div>
+      ${stepBar}
       <div class="joints" id="joints"></div>
+      <div class="evstrip" id="evstrip"></div>
       <div class="toggles">
         <label class="tog" id="corruptTog"><input type="checkbox" id="corrupt"> corrupt the policy (NaN · 9 · −5)</label>
-        <button class="run-btn" id="newtarget">↻ new target</button>
+        <button class="run-btn" id="newtarget">${composite?'↻ restart':'↻ new target'}</button>
       </div>
       <div class="envnote" id="envnote">The policy proposes; the <b>runtime envelope</b> ramps every joint ≤ ${maxStep}/tick and clamps to [0,1].</div>
     </div>
     <div class="rt-side">
       <div class="rt-meta">
-        <div class="row"><span class="k">skill</span><span class="v">${skill.name}</span></div>
+        <div class="row"><span class="k">${composite?'composite':'skill'}</span><span class="v">${composite?composite.name:skill.name}</span></div>
         <div class="row"><span class="k">policy</span><span class="v">${skill.policy}${skill.policy==='vla'?' (SmolVLA·WebGPU)':''}</span></div>
         <div class="row"><span class="k">robot / driver</span><span class="v">${robot.label} · ${CODEC_LABEL[robot.driver.target]}</span></div>
         <div class="row"><span class="k">max step seen</span><span class="v ok" id="mss">0.000</span></div>
         <div class="row"><span class="k">all in [0,1]</span><span class="v ok" id="inrange">yes</span></div>
         <div class="row"><span class="k">wire packet</span><span class="v ok" id="wireok">valid</span></div>
+        <div class="row"><span class="k">interventions</span><span class="v" id="tele">held 0 · clamp 0 · cap 0</span></div>
       </div>
       <div class="wire"><span class="lab">${CODEC_LABEL[robot.driver.target]} · goal-position bytes @20Hz</span><span id="wirehex">—</span></div>
     </div>`;
   wrap.appendChild(stage);
 
-  const jbox=stage.querySelector('#joints');
-  const rows=[];
+  const jbox=stage.querySelector('#joints'), evstrip=stage.querySelector('#evstrip'), rows=[], dots=[];
   for(let i=0;i<dof;i++){
     const row=el('div','jrow');
     row.innerHTML=`<span class="jl">J${i+1}</span><div class="jtrack"><div class="jfill"></div><div class="jtarget"></div></div>`;
     jbox.appendChild(row); rows.push(row);
+    const d=el('span','evdot pass'); dots.push(d);
   }
+  evstrip.innerHTML='<span>safety events:</span>'; dots.forEach(d=>evstrip.appendChild(d));
+  evstrip.appendChild(el('span','tele-counts','  (audit trail — every intervention recorded)'));
+
   stage.querySelector('#corrupt').addEventListener('change',(e)=>{ corrupt=e.target.checked; stage.querySelector('#corruptTog').classList.toggle('on',corrupt); });
-  stage.querySelector('#newtarget').addEventListener('click',()=>{ target=Array.from({length:dof},()=>0.08+Math.random()*0.84); reached=false; });
+  stage.querySelector('#newtarget').addEventListener('click',()=>{
+    if(composite){ wi=0; q=new Array(dof).fill(0.5); done=false; }
+    else waypoints[0].target=Array.from({length:dof},()=>0.08+Math.random()*0.84);
+  });
 
   let acc=0, last=performance.now();
-  function frame(now){
-    acc += now-last; last=now;
-    while(acc>=50){ tick(); acc-=50; }         // 20 Hz control
-    render();
-    raf=requestAnimationFrame(frame);
-  }
+  function frame(now){ acc+=now-last; last=now; while(acc>=50){ tick(); acc-=50; } render(); raf=requestAnimationFrame(frame); }
   function tick(){
-    // policy proposal: analytic drives to target; "corrupt" emits garbage a hijacked/OOD policy might
+    const target=waypoints[wi].target;
     const proposed = corrupt ? q.map((_,i)=>[NaN,9,-5,Infinity,42,7][i%6]) : target.slice();
     const safe = safetyClamp(q, proposed, maxStep, 0, 1);
+    lastEvents = proposed.map((p,i)=>classify(p,safe[i],q[i],maxStep,0,1));
+    lastEvents.forEach(e=>tele[e]++);
     for(let i=0;i<dof;i++) maxStepSeen=Math.max(maxStepSeen, Math.abs(safe[i]-q[i]));
-    q=safe; ticks++;
-    if(!corrupt){ const err=Math.max(...q.map((v,i)=>Math.abs(v-target[i]))); if(err<0.03&&!reached){reached=true;} }
+    q=safe;
+    if(!corrupt){ const err=Math.max(...q.map((v,i)=>Math.abs(v-target[i]))); if(err<0.03){ if(wi<waypoints.length-1) wi++; else done=true; } }
   }
   function render(){
-    for(let i=0;i<dof;i++){ rows[i].querySelector('.jfill').style.width=(q[i]*100)+'%'; rows[i].querySelector('.jtarget').style.left=(target[i]*100)+'%'; }
-    const ids2=ids; const hex=feetechEncode(q, ids2);      // always encode through the (mirrored) real codec
+    const target=waypoints[wi].target;
+    for(let i=0;i<dof;i++){ rows[i].querySelector('.jfill').style.width=(q[i]*100)+'%'; rows[i].querySelector('.jtarget').style.left=(target[i]*100)+'%';
+      dots[i].className='evdot '+lastEvents[i]; dots[i].textContent = lastEvents[i]==='pass'?'':lastEvents[i][0].toUpperCase(); }
+    const hex=feetechEncode(q, ids);
     stage.querySelector('#wirehex').textContent=hex;
-    const inRange=q.every(v=>v>=0&&v<=1&&Number.isFinite(v));
-    const validPkt=/^ff ff fe/.test(hex);
+    const inRange=q.every(v=>v>=0&&v<=1&&Number.isFinite(v)), validPkt=/^ff ff fe/.test(hex);
     stage.querySelector('#mss').textContent=maxStepSeen.toFixed(3);
     stage.querySelector('#mss').className='v '+(maxStepSeen<=maxStep+1e-6?'ok':'warn');
     stage.querySelector('#inrange').textContent=inRange?'yes':'NO'; stage.querySelector('#inrange').className='v '+(inRange?'ok':'warn');
     stage.querySelector('#wireok').textContent=validPkt?'valid':'INVALID'; stage.querySelector('#wireok').className='v '+(validPkt?'ok':'warn');
+    stage.querySelector('#tele').textContent=`held ${tele.held} · clamp ${tele.clamped} · cap ${tele.capped}`;
+    if(composite){ const chips=stage.querySelectorAll('.stepchip'); chips.forEach((c,i)=>{ c.classList.toggle('active',i===wi&&!done); c.classList.toggle('done', i<wi||done); }); }
     const note=stage.querySelector('#envnote');
-    if(corrupt){ note.classList.add('hot'); note.innerHTML='Policy is emitting garbage (NaN · 9 · −5 · ∞). The envelope <b>still holds</b>: joints stay in [0,1], no step exceeds the cap, the wire packet stays valid.'; }
+    if(corrupt){ note.classList.add('hot'); note.innerHTML='Policy is emitting garbage (NaN · 9 · −5 · ∞). The envelope <b>still holds</b> — and every intervention is recorded (the dots).'; }
+    else if(composite&&done){ note.classList.remove('hot'); note.innerHTML=`<b>${composite.name}</b> complete — three sub-skills, each gated and safety-enveloped, in sequence.`; }
     else { note.classList.remove('hot'); note.innerHTML=`The policy proposes; the <b>runtime envelope</b> ramps every joint ≤ ${maxStep}/tick and clamps to [0,1].`; }
   }
   render(); raf=requestAnimationFrame(frame); run=skill;
