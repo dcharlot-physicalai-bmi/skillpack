@@ -182,6 +182,28 @@
         ]
       },
       "summary": "An ankle/hip capture-point balance controller — the contract spans humanoids. 20-DoF whole-body, every joint bounded by the envelope."
+    },
+    {
+      "name": "arm-compliant-push",
+      "title": "Compliant push (torque/impedance control)",
+      "version": "0.1.0",
+      "path": "skills/arm-compliant-push",
+      "files": [
+        "skill.json",
+        "policy.mjs",
+        "eval.json"
+      ],
+      "policy": "analytic",
+      "requires": {
+        "morphology": "arm",
+        "min_dof": 5,
+        "actuation": "torque",
+        "sensors": [
+          "proprioception",
+          "joint_torque"
+        ]
+      },
+      "summary": "A TORQUE-action-space impedance skill — the third actuation type. The envelope is a force limit, so a contact task cannot crush. Runs on a torque-controlled arm."
     }
   ],
   "robots": [
@@ -214,6 +236,11 @@
       "name": "humanoid",
       "path": "robots/humanoid.json",
       "label": "Humanoid (G1-class, 20-DoF)"
+    },
+    {
+      "name": "torque-arm",
+      "path": "robots/torque-arm.json",
+      "label": "Direct-drive arm (ODrive, torque)"
     }
   ]
 }

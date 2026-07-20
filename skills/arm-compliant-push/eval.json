@@ -1,0 +1,7 @@
+{
+  "note": "Torque/impedance control is evaluated in sim on a simple joint mass-damper: the torque-limited spring-damper must converge toward the target while never exceeding the force limit. verify-torque.mjs runs it through the envelope.",
+  "environment": "sim",
+  "metric": "compliant_reach",
+  "threshold": 0.8,
+  "episodes": []
+}

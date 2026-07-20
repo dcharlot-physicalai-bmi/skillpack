@@ -46,9 +46,11 @@ for (const entry of reg.skills) {
   if (!robot) continue;
 
   const dof = robot.dof;
-  const velocity = m.requires.actuation === 'velocity';
-  const cap = velocity ? m.safety.max_accel_norm : m.safety.max_step_norm;         // accel vs position-step cap
-  const range = velocity ? [-m.safety.max_speed_norm, m.safety.max_speed_norm] : [0, 1];
+  const act = m.requires.actuation;
+  const velocity = act === 'velocity', torque = act === 'torque';
+  const cap = velocity ? m.safety.max_accel_norm : torque ? m.safety.max_torque_rate_norm : m.safety.max_step_norm;
+  const range = velocity ? [-m.safety.max_speed_norm, m.safety.max_speed_norm]
+    : torque ? [-m.safety.max_torque_norm, m.safety.max_torque_norm] : [0, 1];
   const target = Array.from({ length: dof }, (_, i) => 0.2 + 0.05 * i);
 
   // normal run
@@ -60,7 +62,7 @@ for (const entry of reg.skills) {
     prev = t.q; if (!okTick(t, range)) bad = true;
   }
   check(`runs on ${robot.name} → valid wire + bounded (40 ticks)`, !bad);
-  check(`no tick exceeded the ${velocity ? 'accel' : 'velocity'} cap`, maxSeen <= cap + 1e-9, `max ${maxSeen.toFixed(3)} ≤ ${cap}`);
+  check(`no tick exceeded the ${velocity ? 'accel' : torque ? 'torque-rate' : 'velocity'} cap`, maxSeen <= cap + 1e-9, `max ${maxSeen.toFixed(3)} ≤ ${cap}`);
 
   // adversarial (only policies with an injectable backend can be corrupted; analytic is trusted-by-construction)
   if (kind === 'vla' || kind === 'lerobot') {

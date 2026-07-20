@@ -1,0 +1,10 @@
+{
+  "name": "Direct-drive arm (ODrive, torque)",
+  "morphology": "arm",
+  "dof": 5,
+  "actuation": "torque",
+  "sensors": ["proprioception", "joint_torque"],
+  "control_rate_hz": 200,
+  "joint_ids": [0, 1, 2, 3, 4],
+  "driver": { "target": "odrive" }
+}

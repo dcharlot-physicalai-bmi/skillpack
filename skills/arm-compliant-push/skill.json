@@ -1,0 +1,31 @@
+{
+  "name": "arm-compliant-push",
+  "version": "0.1.0",
+  "title": "Compliant push (torque/impedance control)",
+  "summary": "A TORQUE-action-space skill: impedance control toward a target — torque = stiffness·(target − q) − damping·q̇, bounded by a force limit. Proves the contract spans the third actuation type; the envelope becomes a FORCE limit, so a contact task can't crush.",
+  "task": "Push to the target compliantly, within a force limit",
+  "authors": ["Institute for Physical AI @ BMI"],
+  "license": "CC-BY-4.0",
+
+  "policy": { "kind": "analytic", "ref": "./policy.mjs", "observation": ["q", "q_target", "q_dot"], "action": "torque" },
+
+  "requires": {
+    "morphology": "arm",
+    "min_dof": 5,
+    "actuation": "torque",
+    "sensors": ["proprioception", "joint_torque"],
+    "control_rate_hz": 200
+  },
+
+  "safety": { "max_torque_norm": 0.5, "max_torque_rate_norm": 0.1, "estop": "zero-torque", "watchdog_ms": 50 },
+
+  "io": { "action_space": "normalized-torque-[-1,1]", "action_dim": "robot.dof" },
+
+  "contract": {
+    "pre": ["q_target provided", "joint torque sensing available"],
+    "post": ["converges toward the target compliantly", "commanded torque never exceeded the force limit"],
+    "invariants": ["|torque| <= max_torque_norm (a force limit — safe contact)", "no per-tick torque change exceeds max_torque_rate_norm", "no NaN reaches the driver"]
+  },
+
+  "eval": { "ref": "./eval.json", "metric": "compliant_reach", "threshold": 0.8, "environment": "sim" }
+}

@@ -67,6 +67,7 @@ envelope hold.
 | `skills/mobile-goto/` | a **velocity**-action-space skill for a mobile base — the contract spans morphologies |
 | `skills/quadruped-trot/` | a **12-DoF CPG trot** — the contract spans legged robots (rhythmic, phase-correct, enveloped) |
 | `skills/humanoid-balance/` | a **20-DoF whole-body balance** (capture-point ankle/hip) — the contract spans humanoids |
+| `skills/arm-compliant-push/` | a **torque/impedance** skill — the third actuation type; the envelope is a force limit |
 | `robots/*.json` | sample robot capability manifests |
 | `demo.html` | the live in-browser showcase (also at physicalai-bmi.org/research/skillpack) |
 

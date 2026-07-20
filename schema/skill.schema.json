@@ -45,6 +45,8 @@
         "max_step_norm": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "position: max normalized per-tick position delta (a velocity limit)" },
         "max_speed_norm": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "velocity: max normalized speed magnitude" },
         "max_accel_norm": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "velocity: max normalized per-tick change in velocity (an accel limit)" },
+        "max_torque_norm": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "torque: max normalized torque magnitude (a force limit)" },
+        "max_torque_rate_norm": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "torque: max normalized per-tick change in torque (a rate limit)" },
         "clamp": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
         "estop": { "type": "string" },
         "watchdog_ms": { "type": "integer", "minimum": 0 }
