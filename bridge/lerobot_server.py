@@ -18,7 +18,10 @@ POLICY_CLASSES = {
     "act":       ("lerobot.policies.act.modeling_act", "ACTPolicy"),
     "diffusion": ("lerobot.policies.diffusion.modeling_diffusion", "DiffusionPolicy"),
     "pi0":       ("lerobot.policies.pi0.modeling_pi0", "PI0Policy"),
+    "pi05":      ("lerobot.policies.pi05.modeling_pi05", "PI05Policy"),
+    "pi0fast":   ("lerobot.policies.pi0_fast.modeling_pi0_fast", "PI0FastPolicy"),
 }
+LANGUAGE_POLICIES = {"pi0", "pi05", "pi0fast"}   # need the task tokenized via the preprocessor
 
 
 def load_policy(checkpoint, policy_type):
@@ -37,7 +40,7 @@ def load_policy(checkpoint, policy_type):
         # language-conditioned policies (pi0) need their task string TOKENIZED into language tokens; the
         # lerobot preprocessor pipeline does that (and normalization). ACT/Diffusion self-normalize.
         preprocessor = None
-        if policy_type == "pi0":
+        if policy_type in LANGUAGE_POLICIES:
             from lerobot.policies.factory import make_pre_post_processors
             preprocessor, _ = make_pre_post_processors(policy.config, pretrained_path=repo)
 
@@ -51,10 +54,11 @@ def load_policy(checkpoint, policy_type):
                     batch[name] = torch.tensor([st], dtype=torch.float32, device=device)
                 else:
                     batch[name] = torch.zeros((1,) + shape, dtype=torch.float32, device=device)  # e.g. camera
-            if obs.get("task") is not None or policy_type == "pi0":
+            if obs.get("task") is not None or policy_type in LANGUAGE_POLICIES:
                 batch["task"] = [obs.get("task") or "reach the target"]
             if preprocessor is not None:
-                batch = preprocessor(batch)                            # tokenize task -> language tokens
+                batch = preprocessor(batch)                            # tokenize task -> language tokens (on CPU)
+                batch = {k: (v.to(device) if torch.is_tensor(v) else v) for k, v in batch.items()}  # → model device
             with torch.no_grad():
                 act = policy.select_action(batch)
             return act.squeeze(0).float().cpu().tolist()
@@ -79,6 +83,16 @@ def main():
     ap.add_argument("--checkpoint", default="mock")
     ap.add_argument("--policy-type", default="act", choices=list(POLICY_CLASSES))
     args = ap.parse_args()
+
+    # Reserve stdout SOLELY for JSON responses. ML libraries (transformers, tqdm, …) print to stdout and
+    # would corrupt the line-delimited JSON protocol — so redirect everything else to stderr.
+    real_stdout = sys.stdout
+    sys.stdout = sys.stderr
+
+    def emit(obj):
+        real_stdout.write(json.dumps(obj) + "\n")
+        real_stdout.flush()
+
     mode, fn = load_policy(args.checkpoint, args.policy_type)
     sys.stderr.write(f"lerobot-bridge ready · checkpoint={args.checkpoint} · mode={mode}\n")
     sys.stderr.flush()
@@ -92,14 +106,14 @@ def main():
             continue
         method = req.get("method")
         if method == "reset":
-            print(json.dumps({"ok": True}), flush=True)
+            emit({"ok": True})
         elif method == "select_action":
-            print(json.dumps({"action": fn(req.get("obs", {})), "mode": mode}), flush=True)
+            emit({"action": fn(req.get("obs", {})), "mode": mode})
         elif method == "shutdown":
-            print(json.dumps({"ok": True}), flush=True)
+            emit({"ok": True})
             break
         else:
-            print(json.dumps({"error": f"unknown method {method}"}), flush=True)
+            emit({"error": f"unknown method {method}"})
 
 
 if __name__ == "__main__":

@@ -88,16 +88,19 @@ npm run test:real         # drives skills with REAL lerobot checkpoints through 
 ```
 
 `verify-bridge-real.mjs` loads **real checkpoints of different architectures** and, each tick, pulls a real
-action out of `.select_action()` and runs it through the skillpack safety envelope to a valid wire packet:
+action out of `.select_action()` and runs it through the skillpack safety envelope to a valid wire packet.
+**Weight-verified across three architectures:**
 
 - **ACT** — `lerobot/act_aloha_sim_transfer_cube_human` (14-dim action)
 - **Diffusion Policy** — `lerobot/diffusion_pusht` (2-dim action)
+- **π0.5** — `lerobot/pi05_base`, a 3B vision-language-action model (32-dim action) — `ONLY=pi05 npm run test:real`
 
 The real actions fall **outside** [0,1] (checkpoints not trained for this arm) — and the runtime **bounds
 them**: valid wire, in range, within the velocity cap. The safety guarantee, weight-verified across
 architectures. Each checkpoint runs only if its real weights actually load (the bridge reports the mode);
-otherwise it's skipped honestly, never faked. `npm run test:real` auto-skips cleanly without the venv.
+otherwise it's skipped honestly, never faked.
 
-**π0** is also fully wired (`policy-type pi0` + the language-token preprocessor), but its tokenizer is the
-**gated** `google/paligemma-3b-pt-224` repo — running it needs Hugging Face access approval to that Google
-model. Once you have access: `ONLY=pi0 npm run test:real`.
+The π-family (π0 / π0.5 / π0-FAST) are 3B VLAs — heavy (~11 GB download, minutes/inference) and their
+tokenizer is the gated `google/paligemma-3b-pt-224` repo (one-time HF access approval). They're wired and
+verified but opt-in (`ONLY=pi05`); the default `npm run test:real` runs ACT + Diffusion and auto-skips
+cleanly without the venv.

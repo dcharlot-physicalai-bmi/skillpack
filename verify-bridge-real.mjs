@@ -27,13 +27,14 @@ const h = (s) => `\n\x1b[1m${s}\x1b[0m`;
 const ALL = [
   { type: 'act',       ckpt: 'lerobot/act_aloha_sim_transfer_cube_human', ticks: 20, readyMs: 120000 },
   { type: 'diffusion', ckpt: 'lerobot/diffusion_pusht',                    ticks: 20, readyMs: 120000 },
-  // pi0 is fully wired (server POLICY_CLASSES + the language preprocessor), but its tokenizer is the GATED
-  // google/paligemma-3b-pt-224 repo — running it needs HF access approval to that Google model. Opt-in via
-  // ONLY=pi0 once you have access; excluded from the default run so test:real stays fast and hermetic.
-  { type: 'pi0',       ckpt: 'lerobot/pi0_base', task: 'pick up the object', ticks: 3, readyMs: 900000 },
+  // π0.5 (the current pi-series checkpoint) is a 3B VLA — heavy (~11 GB download, minutes/inference) and its
+  // tokenizer is the gated google/paligemma-3b-pt-224 repo (needs one-time HF access approval). Fully wired;
+  // opt-in via ONLY=pi05 so the default run stays fast. (pi0 / pi0fast also wired.)
+  { type: 'pi05',      ckpt: 'lerobot/pi05_base', task: 'pick up the object', ticks: 3, readyMs: 1200000 },
 ];
+const PI = new Set(['pi0', 'pi05', 'pi0fast']);
 const only = (process.env.ONLY || '').split(',').filter(Boolean);
-const CHECKPOINTS = only.length ? ALL.filter((c) => only.includes(c.type)) : ALL.filter((c) => c.type !== 'pi0');
+const CHECKPOINTS = only.length ? ALL.filter((c) => only.includes(c.type)) : ALL.filter((c) => !PI.has(c.type));
 
 if (!existsSync(VENV_PY)) {
   console.log(h('verify-bridge-real — SKIPPED'));

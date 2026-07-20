@@ -20,8 +20,9 @@ export function connectLeRobot(checkpoint = 'mock', { python = 'python3', policy
     while ((nl = buf.indexOf('\n')) >= 0) {
       const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
       if (!line) continue;
+      let msg; try { msg = JSON.parse(line); } catch { continue; }   // ignore stray non-JSON on stdout
       const w = waiters.shift();
-      if (w) { try { w.resolve(JSON.parse(line)); } catch (e) { w.reject(e); } }
+      if (w) w.resolve(msg);
     }
   });
   let ready = null, mode = 'unknown';
