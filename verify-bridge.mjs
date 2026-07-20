@@ -28,7 +28,7 @@ const ids = robot.joint_ids || Array.from({ length: dof }, (_, i) => i + 1);
 console.log(h('lerobot bridge · Node ↔ Python driving a skillpack skill through the envelope'));
 let link;
 try {
-  link = connectLeRobot(skill.manifest.policy.checkpoint || 'mock');
+  link = connectLeRobot('mock');   // force the deterministic mock policy — hermetic (no weights, no torch)
   await Promise.race([link.ready(), new Promise((r) => setTimeout(r, 3000))]);
 
   const a0 = await link.selectAction({ state: new Array(dof).fill(0.5), q_target: [0.8, 0.3, 0.6, 0.4, 0.7] });

@@ -1,0 +1,34 @@
+name: CI
+
+# The safety envelope is only a promise if it's checked on every change. This runs the full
+# no-hardware verify suite — including verify-authoring, which drives a HIJACKED policy and fails
+# unless the runtime envelope bounds it — so the "safe by construction" thesis is enforced on every
+# push and pull request, not just once. No npm dependencies and no venv are needed: the bridge falls
+# back to its mock and the LeRobotDataset write auto-skips, so the suite is fully hermetic here.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24', 'latest']   # prior LTS, current LTS, and newest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Toolchain
+        run: node --version
+      - name: Full no-hardware verify suite
+        run: npm test

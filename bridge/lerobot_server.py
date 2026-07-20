@@ -25,9 +25,27 @@ POLICY_CLASSES = {
 LANGUAGE_POLICIES = {"pi0", "pi05", "pi0fast", "smolvla"}   # need the task tokenized via the preprocessor
 
 
+def make_mock(reason=None):
+    """Deterministic proportional-to-target policy — lets the BRIDGE PROTOCOL be tested with no weights."""
+    if reason:
+        sys.stderr.write(f"lerobot unavailable ({reason}); using deterministic mock\n")
+
+    def mock(obs):
+        state = obs.get("state") or []
+        target = obs.get("target")
+        n = len(state) if state else (len(target) if target else 5)
+        if target:
+            return [float(target[i]) if i < len(target) else 0.5 for i in range(n)]
+        return [0.6] * n
+
+    return ("mock", mock)
+
+
 def load_policy(checkpoint, policy_type):
     """Return (mode, fn) where fn(obs)->list[float]. Real LeRobot when importable, else a mock."""
     repo = checkpoint.replace("hf://", "")
+    if repo == "mock":                       # explicit mock — hermetic, never touches torch/lerobot
+        return make_mock()
     try:
         import torch
         mod, cls = POLICY_CLASSES[policy_type]
@@ -70,17 +88,7 @@ def load_policy(checkpoint, policy_type):
 
         return (f"lerobot:{policy_type}", real)
     except Exception as e:  # lerobot/torch absent, or a load error → deterministic mock
-        sys.stderr.write(f"lerobot unavailable ({type(e).__name__}: {str(e)[:80]}); using deterministic mock\n")
-
-        def mock(obs):
-            state = obs.get("state") or []
-            target = obs.get("target")
-            n = len(state) if state else (len(target) if target else 5)
-            if target:
-                return [float(target[i]) if i < len(target) else 0.5 for i in range(n)]
-            return [0.6] * n
-
-        return ("mock", mock)
+        return make_mock(f"{type(e).__name__}: {str(e)[:80]}")
 
 
 def main():

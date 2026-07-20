@@ -6,12 +6,13 @@
 import { spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolvePython } from './python.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-export function connectLeRobot(checkpoint = 'mock', { python = 'python3', policyType = 'act' } = {}) {
+export function connectLeRobot(checkpoint = 'mock', { python, policyType = 'act' } = {}) {
   const args = [resolve(HERE, 'lerobot_server.py'), '--checkpoint', checkpoint, '--policy-type', policyType];
-  const proc = spawn(python, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+  const proc = spawn(resolvePython(python), args, { stdio: ['pipe', 'pipe', 'pipe'] });
   let buf = '';
   const waiters = [];
   proc.stdout.on('data', (d) => {

@@ -5,11 +5,12 @@
 import { spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolvePython } from './python.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-export function connectMuJoCo({ python = 'python3' } = {}) {
-  const proc = spawn(python, [resolve(HERE, 'mujoco_server.py')], { stdio: ['pipe', 'pipe', 'pipe'] });
+export function connectMuJoCo({ python } = {}) {
+  const proc = spawn(resolvePython(python), [resolve(HERE, 'mujoco_server.py')], { stdio: ['pipe', 'pipe', 'pipe'] });
   let buf = '', mode = 'unknown';
   const waiters = [];
   proc.stdout.on('data', (d) => {

@@ -1,5 +1,7 @@
 # skillpack — the open, cross-vendor robot-skill layer
 
+[![CI](https://github.com/dcharlot-physicalai-bmi/skillpack/actions/workflows/ci.yml/badge.svg)](https://github.com/dcharlot-physicalai-bmi/skillpack/actions/workflows/ci.yml)
+
 > **An open standard, Apache-2.0.** Spec: `SPEC.md` (v0.2) · schemas: `schema/` · governance &
 > the path to a neutral foundation: `GOVERNANCE.md` · how to add a skill or change the spec:
 > `CONTRIBUTING.md` + `SEP/`.
