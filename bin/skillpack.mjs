@@ -20,6 +20,7 @@ import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { matchRobot, validateSkill } from '../skillcore.mjs';
+import { packageDigest, fileDigests } from '../integrity.mjs';
 
 const PKG = dirname(dirname(fileURLToPath(import.meta.url)));       // the skillpack package root
 const C = { g: '\x1b[32m', r: '\x1b[31m', y: '\x1b[33m', b: '\x1b[1m', d: '\x1b[2m', gold: '\x1b[38;5;179m', x: '\x1b[0m' };
@@ -113,11 +114,27 @@ async function add() {
     console.log(c('y', '  ! no ./robot.json — installing without a capability check (run `skillpack init`).'));
   }
 
+  // fetch every file, then verify content integrity BEFORE writing anything to disk — a tampered manifest
+  // (loosened safety caps) or a swapped policy is exactly what the runtime envelope can't catch, so we
+  // check the bytes match what the author published before this source is ever run on a robot.
+  const fetched = [];
+  for (const f of s.files) fetched.push({ path: f, bytes: await readFrom(REG, join(s.path, f)) });
+  if (s.integrity) {
+    const got = packageDigest(fetched);
+    if (got !== s.integrity) {
+      if (!flags.insecure) die(`INTEGRITY CHECK FAILED — fetched bytes do not match the registry digest.\n    expected ${s.integrity}\n    got      ${got}\n  This skill may be tampered with. Refusing to install (override with --insecure at your own risk).`);
+      console.log(c('y', '  ! --insecure: integrity mismatch ignored (NOT SAFE).'));
+    } else {
+      console.log('  ' + c('g', '✓ ') + c('d', `integrity verified — ${s.integrity.slice(0, 19)}…`));
+    }
+  } else {
+    console.log(c('y', '  ! registry has no integrity digest for this skill — cannot verify provenance.'));
+  }
+
   // install-as-source
   const dest = resolve('./skills', s.name);
   await mkdir(dest, { recursive: true });
-  for (const f of s.files) {
-    const body = await readFrom(REG, join(s.path, f));
+  for (const { path: f, bytes: body } of fetched) {
     if (f === 'skill.json') { try { validateSkill(JSON.parse(body)); } catch (e) { die(`invalid ${f}: ${e.message}`); } }
     await writeFile(join(dest, f), body);
     console.log('  ' + c('g', '+ ') + c('d', `skills/${s.name}/`) + f);
@@ -207,8 +224,12 @@ async function buildRegistry() {
     const m = JSON.parse(await readFile(join(sdir, 'skill.json'), 'utf8'));
     const files = (await readdir(sdir)).filter((f) => /\.(json|mjs)$/.test(f)).sort();
     const r = m.requires;
+    // content provenance: hash the exact bytes of every packaged file, so `skillpack add` can verify it
+    const bytes = [];
+    for (const f of files) bytes.push({ path: f, bytes: await readFile(join(sdir, f), 'utf8') });
     const entry = { name: m.name, title: m.title, version: m.version, path: `skills/${name}`, files, policy: m.policy.kind,
-      requires: { morphology: r.morphology, min_dof: r.min_dof, actuation: r.actuation, sensors: r.sensors }, summary: m.summary };
+      requires: { morphology: r.morphology, min_dof: r.min_dof, actuation: r.actuation, sensors: r.sensors }, summary: m.summary,
+      integrity: packageDigest(bytes), digests: fileDigests(bytes) };
     if (m.policy.checkpoint) entry.checkpoint = m.policy.checkpoint;
     if (m.policy.kind === 'lerobot') entry.runtime = '@skillpack/lerobot (shared adapter)';
     skills.push(entry);

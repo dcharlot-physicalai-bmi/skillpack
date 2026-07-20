@@ -132,3 +132,17 @@ gates by capability) and **runtime** conformance (a runtime bounds *any* policy 
 deliberately hijacked policy (NaN, ±Inf, wildly out-of-range) and asserting the envelope holds every tick.
 Run `skillpack conformance <dir>` to certify one skill, or `skillpack conformance` for the full battery;
 `conformanceReport({ skill, robot, core, runtime })` runs it against your implementation directly.
+
+## Provenance — a skill you install is the skill the author published
+
+A skill is *source you run on hardware*, so "are these the bytes the author published?" is a safety
+question: the runtime envelope trusts the manifest's own caps, so a **tampered manifest** (a quietly
+loosened `max_step_norm`) or a **swapped policy** would defeat it. Every registry entry therefore records
+a content **`integrity`** digest — `sha256` over a canonical, order-independent serialization of the
+package's files — plus per-file `digests` so a mismatch can be localized.
+
+`skillpack build-registry` computes them from the exact file bytes. `skillpack add` re-fetches every file,
+recomputes the digest, and **refuses to write anything to disk on a mismatch** (override only with
+`--insecure`, loudly). `verify-integrity.mjs` proves both directions: the recorded digests match the files
+on disk, and any tamper — a loosened cap, a single flipped byte in any file — changes the digest and is
+caught before the code is ever run on a robot. This is subresource-integrity for robot skills.

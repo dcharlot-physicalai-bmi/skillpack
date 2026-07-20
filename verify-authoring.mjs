@@ -17,8 +17,15 @@ const strip = (s) => (s || '').replace(/\x1b\[[0-9;]*m/g, '');
 
 // copy only what the author/maintainer commands need (never the venv/node_modules/git)
 const tmp = await mkdtemp(join(tmpdir(), 'skillpack-author-'));
-for (const p of ['bin', 'skills', 'robots', 'policies', 'drivers', 'schema', 'skillkit.mjs', 'skillcore.mjs', 'registry.json']) {
+for (const p of ['bin', 'skills', 'robots', 'policies', 'drivers', 'schema', 'skillkit.mjs', 'skillcore.mjs', 'integrity.mjs', 'registry.json']) {
   if (existsSync(join(HERE, p))) await cp(join(HERE, p), join(tmp, p), { recursive: true });
+}
+// skillkit resolves the hwbridge driver from either the repo's drivers/ or the site's islands lib. The
+// site-embedded tree has no local drivers/, so make the throwaway self-contained: copy whichever
+// hwbridge this tree actually uses into <tmp>/drivers/ (the first place skillkit looks).
+if (!existsSync(join(tmp, 'drivers/hwbridge.js'))) {
+  const hb = [join(HERE, 'drivers/hwbridge.js'), join(HERE, '../public/assets/islands/lib/hwbridge.js')].find(existsSync);
+  if (hb) { await mkdir(join(tmp, 'drivers'), { recursive: true }); await cp(hb, join(tmp, 'drivers/hwbridge.js')); }
 }
 const CLI = join(tmp, 'bin/skillpack.mjs');
 const run = (args) => { const r = spawnSync('node', [CLI, ...args], { cwd: tmp, encoding: 'utf8' }); return { out: strip(r.stdout) + strip(r.stderr), code: r.status }; };

@@ -6,14 +6,70 @@
   "description": "The open, cross-vendor registry of robot skills. Install as source — a policy reference + a typed contract + a capability manifest + a safety envelope + an eval. Composes LeRobot checkpoints; runs on any body in the driver registry.",
   "skills": [
     {
+      "name": "arm-compliant-push",
+      "title": "Compliant push (torque/impedance control)",
+      "version": "0.1.0",
+      "path": "skills/arm-compliant-push",
+      "files": [
+        "eval.json",
+        "policy.mjs",
+        "skill.json"
+      ],
+      "policy": "analytic",
+      "requires": {
+        "morphology": "arm",
+        "min_dof": 5,
+        "actuation": "torque",
+        "sensors": [
+          "proprioception",
+          "joint_torque"
+        ]
+      },
+      "summary": "A TORQUE-action-space skill: impedance control toward a target — torque = stiffness·(target − q) − damping·q̇, bounded by a force limit. Proves the contract spans the third actuation type; the envelope becomes a FORCE limit, so a contact task can't crush.",
+      "integrity": "sha256:b8ffb9f1fb6ae4fb9d206c7d5732318a761814ae1e307ccf9b168761b9c15f6a",
+      "digests": {
+        "eval.json": "sha256:a4361ae3ace69afdbff3d8a8206d35c30dfb0d813dd16a9eca47bb4face62fad",
+        "policy.mjs": "sha256:3e83fe8bd7ba8961da8cb1bae92e5f275733009c6996d012a3f404bd6fa33ec1",
+        "skill.json": "sha256:9f64f56bc09ecea9f173f9d9f6ecf85d12dc09f1d7ab964a5bf6f13c79b03143"
+      }
+    },
+    {
+      "name": "arm-pick-place",
+      "title": "Pick an object and place it on the target",
+      "version": "0.1.0",
+      "path": "skills/arm-pick-place",
+      "files": [
+        "eval.json",
+        "skill.json"
+      ],
+      "policy": "lerobot",
+      "requires": {
+        "morphology": "arm",
+        "min_dof": 5,
+        "actuation": "position",
+        "sensors": [
+          "proprioception",
+          "camera"
+        ]
+      },
+      "summary": "Composes a real LeRobot ACT checkpoint. The skill is the contract; the policy is a checkpoint reference. Same safety envelope and transport as every other skill.",
+      "integrity": "sha256:cd52159d0a11178a16fc786f86452df7f555487f7bbb3a51f3a3b6276a9c04e2",
+      "digests": {
+        "eval.json": "sha256:25bb6def04deccc47e10dcbb2936f671d9a638133638bb68d0d34573a1081c00",
+        "skill.json": "sha256:07602a0ec2575511cb2d8ad05cacb6fb1f58eba9e4d0d6085d4e5537f7fec0b7"
+      },
+      "checkpoint": "hf://lerobot/act_so101_pickplace",
+      "runtime": "@skillpack/lerobot (shared adapter)"
+    },
+    {
       "name": "arm-reach",
       "title": "Reach a target with the end-effector",
       "version": "0.1.0",
       "path": "skills/arm-reach",
       "files": [
-        "skill.json",
+        "eval.json",
         "policy.mjs",
-        "eval.json"
+        "skill.json"
       ],
       "policy": "analytic",
       "requires": {
@@ -25,7 +81,13 @@
           "target_pose"
         ]
       },
-      "summary": "Baseline P-controller reach, ramped under a per-tick velocity cap. Deterministic, ships in-repo."
+      "summary": "Drive an N-DoF position-controlled arm to a commanded joint target, ramped under a per-tick velocity cap and a workspace clamp.",
+      "integrity": "sha256:33dd9b58f60d37e74713ccd39467dc3672709fa4f5b9c54de82a0fee9712fc98",
+      "digests": {
+        "eval.json": "sha256:5608b86e70c7197ec1f11d4cf9bb5ff6d0dec9236ff2490d62cb182cb3896c65",
+        "policy.mjs": "sha256:988c5938027d1a9e1ec23972456ff92547e6b3f3f9b04821d9cd85be3b11b03d",
+        "skill.json": "sha256:fcd5b65d3371160b9d046eaf23a93266aa1b2160d32a2630fb644429a74cd1cc"
+      }
     },
     {
       "name": "arm-reach-vla",
@@ -33,9 +95,9 @@
       "version": "0.1.0",
       "path": "skills/arm-reach-vla",
       "files": [
-        "skill.json",
+        "eval.json",
         "policy.smolvla.mjs",
-        "eval.json"
+        "skill.json"
       ],
       "policy": "vla",
       "requires": {
@@ -47,7 +109,41 @@
           "camera"
         ]
       },
-      "summary": "The same skill driven by a real SmolVLA (450M) — same contract, safety envelope, transport. Weights run in-browser on WebGPU."
+      "summary": "The arm-reach skill driven by a real learned Vision-Language-Action policy (SmolVLA, 450M). Same contract, safety envelope, transport, and eval harness as arm-reach — only the policy block (and its observation/sensor needs) changed.",
+      "integrity": "sha256:4e3423f21cde1e0b30ea2254a68fe6ef6287fd6b93cdced481a05d5ec57917db",
+      "digests": {
+        "eval.json": "sha256:aff79ca2d785b9b134461bf5d5aa28d51c0e87787236bc93b6ea1b11e268216d",
+        "policy.smolvla.mjs": "sha256:444145b6b580f163c950611146bf1dd02e0e56e476e6950538784538023ab746",
+        "skill.json": "sha256:5c5325bde36e11ab68f8b5dd7b1838ad9793ea7cc38a542bc0de3f0a6243f2e8"
+      }
+    },
+    {
+      "name": "arm-stack",
+      "title": "Stack the blocks",
+      "version": "0.1.0",
+      "path": "skills/arm-stack",
+      "files": [
+        "eval.json",
+        "skill.json"
+      ],
+      "policy": "lerobot",
+      "requires": {
+        "morphology": "arm",
+        "min_dof": 6,
+        "actuation": "position",
+        "sensors": [
+          "proprioception",
+          "camera"
+        ]
+      },
+      "summary": "Composes a real LeRobot Diffusion Policy checkpoint. Different architecture, different checkpoint string — identical contract, safety envelope, and transport.",
+      "integrity": "sha256:2f65ad863572b9dae5539a62e91c6441146dee93dc0aac557fe1d1819e03a269",
+      "digests": {
+        "eval.json": "sha256:05fcfc04414d8d8791bcb3d9a3e5b6d6b08f477e3e23f8422979bd50eba4bd1b",
+        "skill.json": "sha256:8b8bea3203694184003f9c9b81189e841fbcafe06473ff0b0d0cc4e82fb899e5"
+      },
+      "checkpoint": "hf://lerobot/diffusion_so101_stack",
+      "runtime": "@skillpack/lerobot (shared adapter)"
     },
     {
       "name": "gripper-grasp",
@@ -55,9 +151,9 @@
       "version": "0.1.0",
       "path": "skills/gripper-grasp",
       "files": [
-        "skill.json",
+        "eval.json",
         "policy.mjs",
-        "eval.json"
+        "skill.json"
       ],
       "policy": "analytic",
       "requires": {
@@ -69,96 +165,13 @@
           "target_pose"
         ]
       },
-      "summary": "Approach + close to a grasp config, ramped under the velocity cap. Needs the gripper DoF (≥5), so it gates out 4-DoF arms."
-    },
-    {
-      "name": "arm-pick-place",
-      "title": "Pick an object and place it on the target",
-      "version": "0.1.0",
-      "path": "skills/arm-pick-place",
-      "files": [
-        "skill.json",
-        "eval.json"
-      ],
-      "runtime": "@skillpack/lerobot (shared adapter)",
-      "policy": "lerobot",
-      "checkpoint": "hf://lerobot/act_so101_pickplace",
-      "requires": {
-        "morphology": "arm",
-        "min_dof": 5,
-        "actuation": "position",
-        "sensors": [
-          "proprioception",
-          "camera"
-        ]
-      },
-      "summary": "Composes a real LeRobot ACT checkpoint via .select_action — the skill is the contract, the policy is a checkpoint reference."
-    },
-    {
-      "name": "arm-stack",
-      "title": "Stack the blocks",
-      "version": "0.1.0",
-      "path": "skills/arm-stack",
-      "files": [
-        "skill.json",
-        "eval.json"
-      ],
-      "runtime": "@skillpack/lerobot (shared adapter)",
-      "policy": "lerobot",
-      "checkpoint": "hf://lerobot/diffusion_so101_stack",
-      "requires": {
-        "morphology": "arm",
-        "min_dof": 6,
-        "actuation": "position",
-        "sensors": [
-          "proprioception",
-          "camera"
-        ]
-      },
-      "summary": "Composes a LeRobot Diffusion Policy checkpoint. Architecture-agnostic: same adapter/contract/envelope as the ACT skill."
-    },
-    {
-      "name": "mobile-goto",
-      "title": "Drive a mobile base to a waypoint",
-      "version": "0.1.0",
-      "path": "skills/mobile-goto",
-      "files": [
-        "skill.json",
-        "policy.mjs",
-        "eval.json"
-      ],
-      "policy": "analytic",
-      "requires": {
-        "morphology": "mobile",
-        "min_dof": 2,
-        "actuation": "velocity",
-        "sensors": [
-          "odometry"
-        ]
-      },
-      "summary": "A VELOCITY-action-space skill for a mobile base — the contract spans morphologies. Runs on the TurtleBot; gates off the arms."
-    },
-    {
-      "name": "quadruped-trot",
-      "title": "Trot gait for a 12-DoF quadruped",
-      "version": "0.1.0",
-      "path": "skills/quadruped-trot",
-      "files": [
-        "skill.json",
-        "policy.mjs",
-        "eval.json"
-      ],
-      "policy": "analytic",
-      "requires": {
-        "morphology": "quadruped",
-        "min_dof": 12,
-        "actuation": "position",
-        "sensors": [
-          "proprioception",
-          "imu"
-        ]
-      },
-      "summary": "A CPG trot gait for a legged robot — the contract spans quadrupeds too. Diagonal leg pairs in phase; every joint command bounded by the envelope."
+      "summary": "Drive an arm with a gripper to a grasp configuration (approach + close), ramped under a per-tick velocity cap. Needs the gripper degree of freedom, so it requires ≥5 DoF.",
+      "integrity": "sha256:0708fc748436b80688145b160c5fe890fd5fab7f996262c4a698c12fa65bbc24",
+      "digests": {
+        "eval.json": "sha256:d4b015a0f2dc36751ef24d63e2f8410fc681f2a18e0bb1bd367ae3b89ef26f5b",
+        "policy.mjs": "sha256:8e1b26cfa6fe6c400e7e2998360c41a43d049d485f42f5054407959f8e444a33",
+        "skill.json": "sha256:b24e98741b8b6b0305ce65a3da3873260ecf275499c49c601934954b2b943a6f"
+      }
     },
     {
       "name": "humanoid-balance",
@@ -166,9 +179,9 @@
       "version": "0.1.0",
       "path": "skills/humanoid-balance",
       "files": [
-        "skill.json",
+        "eval.json",
         "policy.mjs",
-        "eval.json"
+        "skill.json"
       ],
       "policy": "analytic",
       "requires": {
@@ -181,51 +194,80 @@
           "force_torque"
         ]
       },
-      "summary": "An ankle/hip capture-point balance controller — the contract spans humanoids. 20-DoF whole-body, every joint bounded by the envelope."
+      "summary": "An ankle/hip balance strategy: command the center of pressure ahead of the center of mass (capture-point style) to pull the CoM back over the support polygon. Proves the contract spans HUMANOIDS — a 20-DoF whole-body policy reacting to CoM, every joint bounded by the envelope.",
+      "integrity": "sha256:4e452fc641a1a26ac1055f34d654c1b9c49f8f8762e29bbabfa92cb40531319a",
+      "digests": {
+        "eval.json": "sha256:12434c135de740dcdc57bdada2b39027d98cfbe86e6ded56840cd022eaec26ef",
+        "policy.mjs": "sha256:592054eec5fe8e24257f06e29f3a78ad6c9a7801104fcdf24410e71e461c028b",
+        "skill.json": "sha256:7fe132fd94c304388a749df57b0a15748ca3badbdd817b3cbb793ead7d84f950"
+      }
     },
     {
-      "name": "arm-compliant-push",
-      "title": "Compliant push (torque/impedance control)",
+      "name": "mobile-goto",
+      "title": "Drive a mobile base to a waypoint",
       "version": "0.1.0",
-      "path": "skills/arm-compliant-push",
+      "path": "skills/mobile-goto",
       "files": [
-        "skill.json",
+        "eval.json",
         "policy.mjs",
-        "eval.json"
+        "skill.json"
       ],
       "policy": "analytic",
       "requires": {
-        "morphology": "arm",
-        "min_dof": 5,
-        "actuation": "torque",
+        "morphology": "mobile",
+        "min_dof": 2,
+        "actuation": "velocity",
         "sensors": [
-          "proprioception",
-          "joint_torque"
+          "odometry"
         ]
       },
-      "summary": "A TORQUE-action-space impedance skill — the third actuation type. The envelope is a force limit, so a contact task cannot crush. Runs on a torque-controlled arm."
+      "summary": "A VELOCITY-action-space skill for a mobile base: propose a 2D velocity toward the goal, bounded by a speed + acceleration envelope. Proves the contract spans morphologies and action spaces — same negotiation, same safety principle, different bounds.",
+      "integrity": "sha256:cdb6679333aaf44341bf0a1c06a75bb06b4050be59872b01175eeb9a8c128a0b",
+      "digests": {
+        "eval.json": "sha256:c92fbfea0a4669754e63e181e47b9ea520efb9d7afc42ce5d4a316626c61e689",
+        "policy.mjs": "sha256:063fa6513c5fff408c843912bfa2878ca2791653f28aefa43f62fd5c77d2202a",
+        "skill.json": "sha256:adde0f1222eda185b271710b4c81803c4c77c5b3e0fe0877ce9b2aeca3ac8de2"
+      }
+    },
+    {
+      "name": "quadruped-trot",
+      "title": "Trot gait for a 12-DoF quadruped",
+      "version": "0.1.0",
+      "path": "skills/quadruped-trot",
+      "files": [
+        "eval.json",
+        "policy.mjs",
+        "skill.json"
+      ],
+      "policy": "analytic",
+      "requires": {
+        "morphology": "quadruped",
+        "min_dof": 12,
+        "actuation": "position",
+        "sensors": [
+          "proprioception",
+          "imu"
+        ]
+      },
+      "summary": "A central-pattern-generator trot: diagonal leg pairs oscillate in phase, the other pair in antiphase, producing a rhythmic joint-target stream. Proves the contract spans LEGGED morphologies — same negotiation and safety envelope, a many-joint periodic policy.",
+      "integrity": "sha256:53041f1c8a60f341cabcf9efdba9cd21722023a910bb388995cd5bc01b120249",
+      "digests": {
+        "eval.json": "sha256:3577a5e0fd69de64332e6f7142d38834fd5835ed3c44ab8516b78c87ff96f566",
+        "policy.mjs": "sha256:0beaf28c83d354f176b88d0405c50369c204e86be7c81187f84c741106dc92fc",
+        "skill.json": "sha256:b8e6c99d9bbb65c06e0a7593b7f89c9ccbb0d28e393f8d6d3b090ffc45ba368c"
+      }
     }
   ],
   "robots": [
     {
-      "name": "so101",
-      "path": "robots/so101.json",
-      "label": "SO-101 (LeRobot · Feetech)"
-    },
-    {
-      "name": "wx250",
-      "path": "robots/wx250-dynamixel.json",
-      "label": "WidowX-250 (Dynamixel)"
+      "name": "humanoid",
+      "path": "robots/humanoid.json",
+      "label": "Humanoid (G1-class, 20-DoF)"
     },
     {
       "name": "maestro-arm",
       "path": "robots/maestro-arm.json",
-      "label": "Hobby 4-DoF arm (Maestro)"
-    },
-    {
-      "name": "turtlebot",
-      "path": "robots/turtlebot.json",
-      "label": "TurtleBot 4 (mobile base)"
+      "label": "Hobby 4-DoF arm (Pololu Maestro)"
     },
     {
       "name": "quadruped",
@@ -233,14 +275,24 @@
       "label": "Quadruped (Go2-class, 12-DoF)"
     },
     {
-      "name": "humanoid",
-      "path": "robots/humanoid.json",
-      "label": "Humanoid (G1-class, 20-DoF)"
+      "name": "so101",
+      "path": "robots/so101.json",
+      "label": "SO-101 (LeRobot)"
     },
     {
       "name": "torque-arm",
       "path": "robots/torque-arm.json",
       "label": "Direct-drive arm (ODrive, torque)"
+    },
+    {
+      "name": "turtlebot",
+      "path": "robots/turtlebot.json",
+      "label": "TurtleBot 4 (mobile base)"
+    },
+    {
+      "name": "wx250-dynamixel",
+      "path": "robots/wx250-dynamixel.json",
+      "label": "WidowX-250 (Dynamixel X)"
     }
   ]
 }
