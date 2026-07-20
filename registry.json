@@ -10,9 +10,21 @@
       "title": "Reach a target with the end-effector",
       "version": "0.1.0",
       "path": "skills/arm-reach",
-      "files": ["skill.json", "policy.mjs", "eval.json"],
+      "files": [
+        "skill.json",
+        "policy.mjs",
+        "eval.json"
+      ],
       "policy": "analytic",
-      "requires": { "morphology": "arm", "min_dof": 4, "actuation": "position", "sensors": ["proprioception", "target_pose"] },
+      "requires": {
+        "morphology": "arm",
+        "min_dof": 4,
+        "actuation": "position",
+        "sensors": [
+          "proprioception",
+          "target_pose"
+        ]
+      },
       "summary": "Baseline P-controller reach, ramped under a per-tick velocity cap. Deterministic, ships in-repo."
     },
     {
@@ -20,9 +32,21 @@
       "title": "Reach a target with the end-effector (SmolVLA policy)",
       "version": "0.1.0",
       "path": "skills/arm-reach-vla",
-      "files": ["skill.json", "policy.smolvla.mjs", "eval.json"],
+      "files": [
+        "skill.json",
+        "policy.smolvla.mjs",
+        "eval.json"
+      ],
       "policy": "vla",
-      "requires": { "morphology": "arm", "min_dof": 4, "actuation": "position", "sensors": ["proprioception", "camera"] },
+      "requires": {
+        "morphology": "arm",
+        "min_dof": 4,
+        "actuation": "position",
+        "sensors": [
+          "proprioception",
+          "camera"
+        ]
+      },
       "summary": "The same skill driven by a real SmolVLA (450M) — same contract, safety envelope, transport. Weights run in-browser on WebGPU."
     },
     {
@@ -30,9 +54,21 @@
       "title": "Close the gripper to grasp",
       "version": "0.1.0",
       "path": "skills/gripper-grasp",
-      "files": ["skill.json", "policy.mjs", "eval.json"],
+      "files": [
+        "skill.json",
+        "policy.mjs",
+        "eval.json"
+      ],
       "policy": "analytic",
-      "requires": { "morphology": "arm", "min_dof": 5, "actuation": "position", "sensors": ["proprioception", "target_pose"] },
+      "requires": {
+        "morphology": "arm",
+        "min_dof": 5,
+        "actuation": "position",
+        "sensors": [
+          "proprioception",
+          "target_pose"
+        ]
+      },
       "summary": "Approach + close to a grasp config, ramped under the velocity cap. Needs the gripper DoF (≥5), so it gates out 4-DoF arms."
     },
     {
@@ -40,11 +76,22 @@
       "title": "Pick an object and place it on the target",
       "version": "0.1.0",
       "path": "skills/arm-pick-place",
-      "files": ["skill.json", "eval.json"],
+      "files": [
+        "skill.json",
+        "eval.json"
+      ],
       "runtime": "@skillpack/lerobot (shared adapter)",
       "policy": "lerobot",
       "checkpoint": "hf://lerobot/act_so101_pickplace",
-      "requires": { "morphology": "arm", "min_dof": 5, "actuation": "position", "sensors": ["proprioception", "camera"] },
+      "requires": {
+        "morphology": "arm",
+        "min_dof": 5,
+        "actuation": "position",
+        "sensors": [
+          "proprioception",
+          "camera"
+        ]
+      },
       "summary": "Composes a real LeRobot ACT checkpoint via .select_action — the skill is the contract, the policy is a checkpoint reference."
     },
     {
@@ -52,11 +99,22 @@
       "title": "Stack the blocks",
       "version": "0.1.0",
       "path": "skills/arm-stack",
-      "files": ["skill.json", "eval.json"],
+      "files": [
+        "skill.json",
+        "eval.json"
+      ],
       "runtime": "@skillpack/lerobot (shared adapter)",
       "policy": "lerobot",
       "checkpoint": "hf://lerobot/diffusion_so101_stack",
-      "requires": { "morphology": "arm", "min_dof": 6, "actuation": "position", "sensors": ["proprioception", "camera"] },
+      "requires": {
+        "morphology": "arm",
+        "min_dof": 6,
+        "actuation": "position",
+        "sensors": [
+          "proprioception",
+          "camera"
+        ]
+      },
       "summary": "Composes a LeRobot Diffusion Policy checkpoint. Architecture-agnostic: same adapter/contract/envelope as the ACT skill."
     },
     {
@@ -64,9 +122,20 @@
       "title": "Drive a mobile base to a waypoint",
       "version": "0.1.0",
       "path": "skills/mobile-goto",
-      "files": ["skill.json", "policy.mjs", "eval.json"],
+      "files": [
+        "skill.json",
+        "policy.mjs",
+        "eval.json"
+      ],
       "policy": "analytic",
-      "requires": { "morphology": "mobile", "min_dof": 2, "actuation": "velocity", "sensors": ["odometry"] },
+      "requires": {
+        "morphology": "mobile",
+        "min_dof": 2,
+        "actuation": "velocity",
+        "sensors": [
+          "odometry"
+        ]
+      },
       "summary": "A VELOCITY-action-space skill for a mobile base — the contract spans morphologies. Runs on the TurtleBot; gates off the arms."
     },
     {
@@ -74,17 +143,77 @@
       "title": "Trot gait for a 12-DoF quadruped",
       "version": "0.1.0",
       "path": "skills/quadruped-trot",
-      "files": ["skill.json", "policy.mjs", "eval.json"],
+      "files": [
+        "skill.json",
+        "policy.mjs",
+        "eval.json"
+      ],
       "policy": "analytic",
-      "requires": { "morphology": "quadruped", "min_dof": 12, "actuation": "position", "sensors": ["proprioception", "imu"] },
+      "requires": {
+        "morphology": "quadruped",
+        "min_dof": 12,
+        "actuation": "position",
+        "sensors": [
+          "proprioception",
+          "imu"
+        ]
+      },
       "summary": "A CPG trot gait for a legged robot — the contract spans quadrupeds too. Diagonal leg pairs in phase; every joint command bounded by the envelope."
+    },
+    {
+      "name": "humanoid-balance",
+      "title": "Whole-body balance for a humanoid",
+      "version": "0.1.0",
+      "path": "skills/humanoid-balance",
+      "files": [
+        "skill.json",
+        "policy.mjs",
+        "eval.json"
+      ],
+      "policy": "analytic",
+      "requires": {
+        "morphology": "humanoid",
+        "min_dof": 18,
+        "actuation": "position",
+        "sensors": [
+          "proprioception",
+          "imu",
+          "force_torque"
+        ]
+      },
+      "summary": "An ankle/hip capture-point balance controller — the contract spans humanoids. 20-DoF whole-body, every joint bounded by the envelope."
     }
   ],
   "robots": [
-    { "name": "so101", "path": "robots/so101.json", "label": "SO-101 (LeRobot · Feetech)" },
-    { "name": "wx250", "path": "robots/wx250-dynamixel.json", "label": "WidowX-250 (Dynamixel)" },
-    { "name": "maestro-arm", "path": "robots/maestro-arm.json", "label": "Hobby 4-DoF arm (Maestro)" },
-    { "name": "turtlebot", "path": "robots/turtlebot.json", "label": "TurtleBot 4 (mobile base)" },
-    { "name": "quadruped", "path": "robots/quadruped.json", "label": "Quadruped (Go2-class, 12-DoF)" }
+    {
+      "name": "so101",
+      "path": "robots/so101.json",
+      "label": "SO-101 (LeRobot · Feetech)"
+    },
+    {
+      "name": "wx250",
+      "path": "robots/wx250-dynamixel.json",
+      "label": "WidowX-250 (Dynamixel)"
+    },
+    {
+      "name": "maestro-arm",
+      "path": "robots/maestro-arm.json",
+      "label": "Hobby 4-DoF arm (Maestro)"
+    },
+    {
+      "name": "turtlebot",
+      "path": "robots/turtlebot.json",
+      "label": "TurtleBot 4 (mobile base)"
+    },
+    {
+      "name": "quadruped",
+      "path": "robots/quadruped.json",
+      "label": "Quadruped (Go2-class, 12-DoF)"
+    },
+    {
+      "name": "humanoid",
+      "path": "robots/humanoid.json",
+      "label": "Humanoid (G1-class, 20-DoF)"
+    }
   ]
 }

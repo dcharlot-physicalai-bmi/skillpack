@@ -36,7 +36,8 @@ for (let i = 0; i < rest.length; i++) {
 const REG = flags.registry || PKG;
 const isUrl = (s) => /^https?:\/\//.test(s);
 async function readFrom(base, rel) {
-  if (isUrl(base)) { const r = await fetch(base.replace(/\/$/, '') + '/' + rel); if (!r.ok) throw new Error(`${r.status} ${rel}`); return r.text(); }
+  // a registry client should always see the current index, not a cached one
+  if (isUrl(base)) { const r = await fetch(base.replace(/\/$/, '') + '/' + rel, { cache: 'no-store' }); if (!r.ok) throw new Error(`${r.status} ${rel}`); return r.text(); }
   return readFile(resolve(base, rel), 'utf8');
 }
 const loadRegistry = async () => JSON.parse(await readFrom(REG, 'registry.json'));

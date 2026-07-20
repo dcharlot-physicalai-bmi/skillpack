@@ -1,0 +1,31 @@
+{
+  "name": "humanoid-balance",
+  "version": "0.1.0",
+  "title": "Whole-body balance for a humanoid",
+  "summary": "An ankle/hip balance strategy: command the center of pressure ahead of the center of mass (capture-point style) to pull the CoM back over the support polygon. Proves the contract spans HUMANOIDS — a 20-DoF whole-body policy reacting to CoM, every joint bounded by the envelope.",
+  "task": "Stay standing and balanced",
+  "authors": ["Institute for Physical AI @ BMI"],
+  "license": "CC-BY-4.0",
+
+  "policy": { "kind": "analytic", "ref": "./policy.mjs", "observation": ["com", "com_vel", "proprioception"], "action": "q_cmd" },
+
+  "requires": {
+    "morphology": "humanoid",
+    "min_dof": 18,
+    "actuation": "position",
+    "sensors": ["proprioception", "imu", "force_torque"],
+    "control_rate_hz": 50
+  },
+
+  "safety": { "max_step_norm": 0.06, "clamp": [0, 1], "estop": "crouch-and-hold", "watchdog_ms": 100 },
+
+  "io": { "action_space": "normalized-joint-position-0..1", "action_dim": "20 (legs · torso · arms)" },
+
+  "contract": {
+    "pre": ["standing, feet flat, CoM near the support-polygon center"],
+    "post": ["CoM kept within the support polygon under disturbance", "no per-tick step exceeded the cap"],
+    "invariants": ["every commanded joint within [0,1]", "no NaN reaches the driver"]
+  },
+
+  "eval": { "ref": "./eval.json", "metric": "balance_recovery", "threshold": 0.8, "environment": "sim" }
+}

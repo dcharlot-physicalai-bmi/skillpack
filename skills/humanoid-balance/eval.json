@@ -1,0 +1,7 @@
+{
+  "note": "Balance is evaluated in sim on a linear-inverted-pendulum CoM model: push the CoM and require it to stay within the support polygon and return to center. verify-humanoid.mjs runs the recovery through the safety envelope.",
+  "environment": "sim",
+  "metric": "balance_recovery",
+  "threshold": 0.8,
+  "episodes": []
+}
