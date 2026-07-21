@@ -43,9 +43,11 @@ collision-free config). This is a real, verified upgrade — but its scope is pr
 - It applies **only to robots that declare a geometry model**. `hasGeometry(robot)` reports whether the
   guarantee is available; robots without one get *no* collision guarantee (N2 stays out of scope for them),
   and `verify-collision.mjs` pins that.
-- The shipped geometry supports both a **2D planar** and a **3D spatial** (rotation-per-joint) chain, on
-  didactic robots — enough to make the checks concrete and verifiable, with capsule links + AABB keep-outs.
-  It is *not* a claim of full 3D **mesh** collision or a real robot's measured dimensions.
+- The shipped geometry supports both a **2D planar** and a **3D spatial** (rotation-per-joint) chain, with
+  capsule links + AABB keep-outs. Real robots import via **URDF** (`urdf.mjs`, `skillpack import-urdf`),
+  which reads the kinematic chain + **primitive** collision geometry and derives a conservative uniform
+  capsule radius (errs toward flagging collisions). It is *not* a claim of full 3D **mesh** collision —
+  mesh geometry is flagged with a warning, not silently approximated — nor of a real robot's exact volume.
 - It pairs with a **planner** (`planning.mjs`): a seeded RRT that finds a collision-free path *around* the
   obstacle (every config and edge verified clear), so following the plan avoids tripping the protective stop.
   The planner returns a guaranteed-safe path, **not** a shortest/optimal one; it plans in normalized joint

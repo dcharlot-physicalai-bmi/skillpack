@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<robot name="meshbot">
+  <link name="base">
+    <collision><geometry><mesh filename="package://meshbot/base.stl"/></geometry></collision>
+  </link>
+  <link name="l1">
+    <collision><geometry><cylinder radius="0.06" length="0.50"/></geometry></collision>
+  </link>
+  <joint name="j1" type="continuous">
+    <parent link="base"/>
+    <child link="l1"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+</robot>

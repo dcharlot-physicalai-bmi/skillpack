@@ -68,16 +68,33 @@ function rotAxis(axis, ang) {
 }
 const matmul3 = (A, B) => A.map((row) => B[0].map((_, j) => row[0] * B[0][j] + row[1] * B[1][j] + row[2] * B[2][j]));
 const matvec3 = (M, v) => M.map((row) => row[0] * v[0] + row[1] * v[1] + row[2] * v[2]);
+// URDF fixed-axis roll-pitch-yaw → rotation matrix: R = Rz(yaw) · Ry(pitch) · Rx(roll).
+function rpyMat([r = 0, p = 0, y = 0] = []) {
+  return matmul3(rotAxis([0, 0, 1], y), matmul3(rotAxis([0, 1, 0], p), rotAxis([1, 0, 0], r)));
+}
 
+// A spatial chain supports two per-joint conventions: `link` (didactic — rotate about the axis, then a
+// fixed offset) or `origin{xyz,rpy}` (URDF — a fixed transform to the joint frame, then rotate). An
+// optional `tip{xyz}` adds the final link segment past the last joint (URDF's last link extent).
 function spatialFK(g, q) {
   let R = [[1, 0, 0], [0, 1, 0], [0, 0, 1]], p = g.base.slice();
   const pts = [p.slice()];
   for (let i = 0; i < g.joints.length; i++) {
-    const [lo, hi] = g.joint_range_rad[i];
-    R = matmul3(R, rotAxis(g.joints[i].axis, lo + (q[i] ?? 0.5) * (hi - lo)));
-    p = add(p, matvec3(R, g.joints[i].link));
-    pts.push(p.slice());
+    const j = g.joints[i];
+    const [lo, hi] = g.joint_range_rad ? g.joint_range_rad[i] : j.range;
+    const ang = lo + (q[i] ?? 0.5) * (hi - lo);
+    if (j.origin) {                                   // URDF: fixed transform to the joint frame, then rotate
+      R = matmul3(R, rpyMat(j.origin.rpy));
+      p = add(p, matvec3(R, j.origin.xyz || [0, 0, 0]));
+      pts.push(p.slice());
+      R = matmul3(R, rotAxis(j.axis, ang));
+    } else {                                          // didactic: rotate about the axis, then a link offset
+      R = matmul3(R, rotAxis(j.axis, ang));
+      p = add(p, matvec3(R, j.link));
+      pts.push(p.slice());
+    }
   }
+  if (g.tip) { p = add(p, matvec3(R, g.tip.xyz)); pts.push(p.slice()); }
   return pts;
 }
 
@@ -86,8 +103,15 @@ export function forwardK(robot, q) {
   return g.kind === 'spatial-serial' ? spatialFK(g, q) : planarFK(g, q);
 }
 
-const radiusOf = (g, i) => (g.links ? g.links[i].radius : g.joints[i].radius);
-const nLinks = (g) => (g.links ? g.links.length : g.joints.length);
+// radii per SEGMENT (there are pts.length-1 segments). planar/didactic → per-link/joint radius; a URDF
+// import uses a single conservative `uniformRadius` (max collision radius) to avoid fragile per-link mapping.
+function linkRadii(g, nSeg) {
+  if (g.uniformRadius != null) return new Array(nSeg).fill(g.uniformRadius);
+  if (g.links) return g.links.map((l) => l.radius);
+  const r = g.joints.map((j) => j.radius);
+  if (g.tip) r.push(g.tip.radius);
+  return r;
+}
 
 // ── keep-out tests ──────────────────────────────────────────────────────────────────────────────────
 const inBox2 = (p, [xmin, ymin, xmax, ymax]) => p[0] >= xmin && p[0] <= xmax && p[1] >= ymin && p[1] <= ymax;
@@ -118,12 +142,13 @@ function segAABB3(a, b, aabb) {
 // Is configuration q geometrically unsafe? → { hit, kind, detail }. Requires a geometry model.
 export function collides(robot, q) {
   if (!hasGeometry(robot)) return { hit: false, kind: null, detail: 'no geometry model — collision checking not available (N2)' };
-  const g = robot.geometry, pts = forwardK(robot, q), n = nLinks(g), spatial = g.kind === 'spatial-serial';
+  const g = robot.geometry, pts = forwardK(robot, q), spatial = g.kind === 'spatial-serial';
+  const n = pts.length - 1, radii = linkRadii(g, n);
 
   // self-collision: any pair of NON-ADJACENT link capsules closer than the sum of their radii.
   for (let i = 0; i < n; i++) for (let j = i + 2; j < n; j++) {
     const dmin = segSegDist(pts[i], pts[i + 1], pts[j], pts[j + 1]);
-    if (dmin < radiusOf(g, i) + radiusOf(g, j)) return { hit: true, kind: 'self-collision', detail: `link ${i} ∩ link ${j} (gap ${dmin.toFixed(3)})` };
+    if (dmin < radii[i] + radii[j]) return { hit: true, kind: 'self-collision', detail: `link ${i} ∩ link ${j} (gap ${dmin.toFixed(3)})` };
   }
   const ws = g.workspace || {};
   // floor: the vertical axis is y in 2D, z in 3D.

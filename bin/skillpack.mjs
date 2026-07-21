@@ -279,7 +279,20 @@ async function conformance() {
   process.exit(report.conformant ? 0 : 1);
 }
 
-const CMDS = { list, init, check, add, verify, conformance, new: newSkill, validate, 'build-registry': buildRegistry };
+// Import a URDF into a skillpack robot manifest (geometry for the collision + planning layers).
+async function importUrdf() {
+  const file = pos[0]; if (!file) die('usage: skillpack import-urdf <robot.urdf> [--out robot.json]');
+  const { robotFromURDF } = await import('../urdf.mjs');
+  const xml = await readFile(resolve(file), 'utf8');
+  const { robot, warnings } = robotFromURDF(xml, { name: flags.name });
+  const out = flags.out && flags.out !== true ? flags.out : './robot.json';
+  await writeFile(resolve(out), JSON.stringify(robot, null, 2) + '\n');
+  console.log(c('g', '✓ ') + `imported ${robot.name}` + c('d', ` — ${robot.dof} DoF, geometry.kind=${robot.geometry.kind}, uniformRadius=${robot.geometry.uniformRadius}`));
+  console.log('  ' + c('d', `wrote ${out}`));
+  for (const w of warnings) console.log('  ' + c('y', '! ') + w);
+}
+
+const CMDS = { list, init, check, add, verify, conformance, 'import-urdf': importUrdf, new: newSkill, validate, 'build-registry': buildRegistry };
 if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
   console.log(`${c('b', 'skillpack')} — the open robot-skill CLI\n
 ${c('d', 'use a skill')}
@@ -291,6 +304,7 @@ ${c('d', 'author a skill')}
   ${c('gold', 'new')} <name> [--morphology arm --dof 5 --policy analytic]   scaffold a skill you own
   ${c('gold', 'validate')} <dir>          schema + capability + the safety gate (hijacked policy stays bounded)
   ${c('gold', 'conformance')} [dir]       run the normative standard: [dir] certifies one skill, no-arg = full battery
+  ${c('gold', 'import-urdf')} <file>      import a URDF into a robot.json with collision geometry
   ${c('gold', 'build-registry')}          regenerate registry.json from skills/ and robots/
   ${c('gold', 'verify')}                  run the skillpack self-test
 ${c('d', '\n  --registry <path|url>   --robot <file>')}`);

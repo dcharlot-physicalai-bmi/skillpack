@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<robot name="test2r">
+  <link name="base">
+    <collision><geometry><cylinder radius="0.05" length="0.10"/></geometry></collision>
+  </link>
+  <link name="l1">
+    <collision><geometry><cylinder radius="0.04" length="0.40"/></geometry></collision>
+  </link>
+  <link name="l2">
+    <collision><geometry><cylinder radius="0.03" length="0.30"/></geometry></collision>
+  </link>
+
+  <joint name="j1" type="revolute">
+    <parent link="base"/>
+    <child link="l1"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14159" upper="3.14159"/>
+  </joint>
+
+  <joint name="j2" type="revolute">
+    <parent link="l1"/>
+    <child link="l2"/>
+    <origin xyz="0.40 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.61799" upper="2.61799"/>
+  </joint>
+</robot>

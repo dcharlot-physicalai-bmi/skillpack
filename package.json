@@ -9,7 +9,7 @@
     "./core": "./skillcore.mjs"
   },
   "scripts": {
-    "test": "node verify.mjs && node verify-vla.mjs && node verify-cli.mjs && node verify-flywheel.mjs && node verify-spec.mjs && node verify-mcp.mjs && node verify-bridge.mjs && node verify-eval.mjs && node verify-durable.mjs && node verify-mobile.mjs && node verify-telemetry.mjs && node verify-composite.mjs && node verify-authoring.mjs && node verify-quadruped.mjs && node verify-fleet.mjs && node verify-humanoid.mjs && node verify-torque.mjs && node verify-record.mjs && node verify-conformance.mjs && node verify-integrity.mjs && node verify-interop.mjs && node verify-crosslang.mjs && node verify-agent.mjs && node verify-safety-case.mjs && node verify-collision.mjs && node verify-collision-3d.mjs && node verify-planning.mjs",
+    "test": "node verify.mjs && node verify-vla.mjs && node verify-cli.mjs && node verify-flywheel.mjs && node verify-spec.mjs && node verify-mcp.mjs && node verify-bridge.mjs && node verify-eval.mjs && node verify-durable.mjs && node verify-mobile.mjs && node verify-telemetry.mjs && node verify-composite.mjs && node verify-authoring.mjs && node verify-quadruped.mjs && node verify-fleet.mjs && node verify-humanoid.mjs && node verify-torque.mjs && node verify-record.mjs && node verify-conformance.mjs && node verify-integrity.mjs && node verify-interop.mjs && node verify-crosslang.mjs && node verify-agent.mjs && node verify-safety-case.mjs && node verify-collision.mjs && node verify-collision-3d.mjs && node verify-planning.mjs && node verify-urdf.mjs",
     "test:py": "python3.13 py/skillpack.py",
     "test:real": "node verify-bridge-real.mjs",
     "test:mujoco": "node verify-mujoco.mjs",
