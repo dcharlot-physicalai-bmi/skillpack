@@ -45,8 +45,10 @@ collision-free config). This is a real, verified upgrade — but its scope is pr
   and `verify-collision.mjs` pins that.
 - The shipped geometry is a **2D planar model** on a didactic robot — enough to make the checks concrete and
   verifiable, *not* a claim of full 3D mesh collision or a real robot's measured dimensions.
-- It is a **guard, not a planner**: it stops a colliding motion; it does not find a collision-free path
-  around the obstacle. That remains future work (a motion-planning layer).
+- It pairs with a **planner** (`planning.mjs`): a seeded RRT that finds a collision-free path *around* the
+  obstacle (every config and edge verified clear), so following the plan avoids tripping the protective stop.
+  The planner returns a guaranteed-safe path, **not** a shortest/optimal one, and inherits the same scope
+  (2D planar, declared geometry only). Full 3D mesh collision and optimal planning remain future work.
 | **N3** | **Dynamic stability on hardware.** In-range, rate-capped commands are *kinematic* bounds; they are not a guarantee of dynamic stability, traction, or balance on a real body. | The runtime is not a dynamics model. | controller tuning + hardware commissioning + the sim eval |
 | **N4** | **Perception / sensor integrity.** A spoofed or wrong observation can make an honest policy choose a bad — but still in-range — action. The envelope bounds the *action*, not the *truth of the input*. | The envelope sees commands, not the world. | perception + sensor attestation |
 | **N5** | **Hard real-time timing.** The JS/Python runtimes give *logical* command bounds, not hard real-time deadlines. | Host runtimes aren't RTOSes. | the target's own control loop |
