@@ -46,6 +46,15 @@ check('mesh collision geometry produces a warning (not a silent wrong radius)', 
 check('the conservative radius falls back to the primitive links only', mesh.robot.geometry.uniformRadius === 0.06);
 check('a continuous joint (no <limit>) imports with a full-turn range', mesh.robot.geometry.joints[0].range[0] < -3 && mesh.robot.geometry.joints[0].range[1] > 3);
 
+// ── 3b · fixed-joint merging (tool mounts / sensor frames / base offsets are preserved) ────────────────
+console.log(h('3b · fixed joints are merged (their transform is preserved, not dropped)'));
+const fixedXml = await readFile(join(HERE, 'examples/test-fixed.urdf'), 'utf8');
+const fixed = robotFromURDF(fixedXml, { name: 'fixedbot' });
+check('the fixed joint is folded in (2 movable DoF, no "unsupported" warning)', fixed.robot.dof === 2 && fixed.warnings.length === 0);
+check('the merged origin carries a raw rotation matrix + composed translation', !!fixed.robot.geometry.joints[1].origin.R && JSON.stringify(fixed.robot.geometry.joints[1].origin.xyz.map((v) => +v.toFixed(3))) === '[0.4,0.2,0]');
+const fixedTip = forwardK(fixed.robot, [0.5, 0.5]).at(-1);   // hand calc: fixed 90° yaw rotates l2 into +y
+check('FK matches hand computation through the fixed 90° rotation → tip [0.4, 0.5, 0]', near(fixedTip[0], 0.4) && near(fixedTip[1], 0.5) && near(fixedTip[2], 0), `[${fixedTip.map((v) => v.toFixed(2))}]`);
+
 // ── 4 · the full pipeline runs on the imported robot ───────────────────────────────────────────────────
 console.log(h('4 · collision + planning on the imported robot (with a configured keep-out)'));
 robot.geometry.workspace = { floor_z: -10, keepout: [{ aabb: [0.55, -0.12, -0.1, 0.85, 0.12, 0.1] }] };

@@ -45,9 +45,11 @@ collision-free config). This is a real, verified upgrade — but its scope is pr
   and `verify-collision.mjs` pins that.
 - The shipped geometry supports both a **2D planar** and a **3D spatial** (rotation-per-joint) chain, with
   capsule links + AABB keep-outs. Real robots import via **URDF** (`urdf.mjs`, `skillpack import-urdf`),
-  which reads the kinematic chain + **primitive** collision geometry and derives a conservative uniform
-  capsule radius (errs toward flagging collisions). It is *not* a claim of full 3D **mesh** collision —
-  mesh geometry is flagged with a warning, not silently approximated — nor of a real robot's exact volume.
+  which reads the kinematic chain (revolute/continuous joints, with **fixed joints merged** so tool mounts,
+  sensor frames, and base offsets are preserved) + **primitive** collision geometry, and derives a
+  conservative uniform capsule radius (errs toward flagging collisions). It is *not* a claim of full 3D
+  **mesh** collision — mesh geometry is flagged with a warning, not silently approximated — nor of a real
+  robot's exact volume.
 - It pairs with a **planner** (`planning.mjs`): a seeded RRT that finds a collision-free path *around* the
   obstacle (every config and edge verified clear), so following the plan avoids tripping the protective stop.
   The planner returns a guaranteed-safe path, **not** a shortest/optimal one; it plans in normalized joint

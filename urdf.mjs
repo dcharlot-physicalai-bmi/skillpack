@@ -9,6 +9,13 @@
 // The result is a `spatial-serial` geometry with a single conservative `uniformRadius` (= max link radius),
 // which errs toward flagging collisions (the safe direction). This is not a full mesh collision importer.
 
+import { rpyMat, matmul3, matvec3 } from './collision.mjs';
+
+const I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+const addv = (a, b) => a.map((v, i) => v + b[i]);
+// compose two rigid transforms {R,t}: (a ∘ b) = { R: Ra·Rb, t: ta + Ra·tb }
+const compose = (a, b) => ({ R: matmul3(a.R, b.R), t: addv(a.t, matvec3(a.R, b.t)) });
+
 // ── a tiny, tolerant XML reader for the URDF subset we need (elements + attributes; no entities/CDATA) ──
 const attrs = (s) => { const o = {}; for (const m of s.matchAll(/([\w:-]+)\s*=\s*"([^"]*)"/g)) o[m[1]] = m[2]; return o; };
 // all <tag ...>inner</tag> and self-closing <tag .../> occurrences (non-nested-same-tag; fine for URDF).
@@ -69,18 +76,25 @@ export function urdfToGeometry(urdf) {
   if (Object.values(urdf.links).some((l) => l.radius === 'mesh')) warnings.push('mesh collision geometry is not interpreted; using a conservative uniform radius from primitive links only');
   const uniformRadius = radii.length ? Math.max(...radii) : 0.05;
 
+  // Walk the chain, folding FIXED joints into a pending transform that is composed into the next movable
+  // joint's effective origin — so a fixed tool mount / sensor frame / base offset is preserved, not dropped.
   const joints = [];
-  let lastChild = root;
+  let pending = { R: I3, t: [0, 0, 0] }, lastChild = root;
   for (const j of chain) {
-    if (j.type === 'fixed') { warnings.push(`fixed joint "${j.name}" is not yet merged into the chain (v1 supports revolute/continuous)`); continue; }
-    if (!MOVABLE.has(j.type)) { warnings.push(`joint "${j.name}" type "${j.type}" unsupported; skipped`); continue; }
-    const lim = j.limit || { lower: -Math.PI, upper: Math.PI };   // continuous joints have no limit → full turn
-    joints.push({ name: j.name, origin: j.origin, axis: j.axis, range: [lim.lower, lim.upper] });
+    if (!MOVABLE.has(j.type) && j.type !== 'fixed') { warnings.push(`joint "${j.name}" type "${j.type}" unsupported; treated as fixed`); }
+    pending = compose(pending, { R: rpyMat(j.origin.rpy), t: j.origin.xyz });   // this joint's fixed transform
+    if (MOVABLE.has(j.type)) {
+      const lim = j.limit || { lower: -Math.PI, upper: Math.PI };               // continuous → full turn
+      joints.push({ name: j.name, origin: { R: pending.R, xyz: pending.t }, axis: j.axis, range: [lim.lower, lim.upper] });
+      pending = { R: I3, t: [0, 0, 0] };
+    }
     lastChild = j.child;
   }
-  // the last link has no downstream joint; extend the tip by its own collision length along the joint's local x.
+  if (joints.length === 0) throw new Error('URDF chain has no movable (revolute/continuous) joints');
+  // the last link has no downstream joint; extend the tip by its own collision length, carrying any
+  // trailing fixed transform (pending) into the tip offset.
   const tipLen = (urdf.links[lastChild] && urdf.links[lastChild].length) || uniformRadius * 2;
-  const tip = { xyz: [tipLen, 0, 0], radius: uniformRadius };
+  const tip = { xyz: addv(pending.t, matvec3(pending.R, [tipLen, 0, 0])), radius: uniformRadius };
 
   return {
     geometry: { kind: 'spatial-serial', base: [0, 0, 0], uniformRadius, joints, tip },

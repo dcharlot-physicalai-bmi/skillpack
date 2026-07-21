@@ -66,10 +66,10 @@ function rotAxis(axis, ang) {
     [t * x * z - s * y, t * y * z + s * x, t * z * z + c],
   ];
 }
-const matmul3 = (A, B) => A.map((row) => B[0].map((_, j) => row[0] * B[0][j] + row[1] * B[1][j] + row[2] * B[2][j]));
-const matvec3 = (M, v) => M.map((row) => row[0] * v[0] + row[1] * v[1] + row[2] * v[2]);
+export const matmul3 = (A, B) => A.map((row) => B[0].map((_, j) => row[0] * B[0][j] + row[1] * B[1][j] + row[2] * B[2][j]));
+export const matvec3 = (M, v) => M.map((row) => row[0] * v[0] + row[1] * v[1] + row[2] * v[2]);
 // URDF fixed-axis roll-pitch-yaw → rotation matrix: R = Rz(yaw) · Ry(pitch) · Rx(roll).
-function rpyMat([r = 0, p = 0, y = 0] = []) {
+export function rpyMat([r = 0, p = 0, y = 0] = []) {
   return matmul3(rotAxis([0, 0, 1], y), matmul3(rotAxis([0, 1, 0], p), rotAxis([1, 0, 0], r)));
 }
 
@@ -83,10 +83,10 @@ function spatialFK(g, q) {
     const j = g.joints[i];
     const [lo, hi] = g.joint_range_rad ? g.joint_range_rad[i] : j.range;
     const ang = lo + (q[i] ?? 0.5) * (hi - lo);
-    if (j.origin) {                                   // URDF: fixed transform to the joint frame, then rotate
-      R = matmul3(R, rpyMat(j.origin.rpy));
-      p = add(p, matvec3(R, j.origin.xyz || [0, 0, 0]));
+    if (j.origin) {                                   // URDF: translate to the joint frame, then rotate (rpy), then the joint's own rotation
+      p = add(p, matvec3(R, j.origin.xyz || [0, 0, 0]));   // translate in the PARENT frame (URDF semantics)
       pts.push(p.slice());
+      R = matmul3(R, j.origin.R || rpyMat(j.origin.rpy));  // fixed rotation (a raw matrix when fixed joints were merged in)
       R = matmul3(R, rotAxis(j.axis, ang));
     } else {                                          // didactic: rotate about the axis, then a link offset
       R = matmul3(R, rotAxis(j.axis, ang));
