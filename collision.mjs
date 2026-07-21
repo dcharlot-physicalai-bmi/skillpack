@@ -13,6 +13,8 @@
 // Layered ON TOP of the envelope, not instead of it. Robots WITHOUT a geometry model get no collision
 // guarantee (N2 stays honestly out of scope) — hasGeometry() says so. Capsule/AABB, not full mesh.
 
+import { gjkDistance } from './gjk.mjs';
+
 export const hasGeometry = (robot) => !!(robot.geometry && ['planar-serial', 'spatial-serial'].includes(robot.geometry.kind));
 
 // ── dimension-generic vector helpers (work for 2D or 3D arrays) ──────────────────────────────────────
@@ -154,10 +156,12 @@ export function collides(robot, q) {
   // floor: the vertical axis is y in 2D, z in 3D.
   const vAxis = spatial ? 2 : 1, floor = spatial ? ws.floor_z : ws.floor_y;
   if (floor != null) { const below = pts.find((p) => p[vAxis] < floor); if (below) return { hit: true, kind: 'floor', detail: `point ${['x', 'y', 'z'][vAxis]}=${below[vAxis].toFixed(3)} < floor ${floor}` }; }
-  // keep-out: any link segment intersecting a forbidden region (2D box or 3D AABB).
+  // keep-out: any link segment intersecting a forbidden region — a 2D box, a 3D AABB, or an arbitrary
+  // CONVEX HULL (via GJK: the capsule collides if its axis comes within the link radius of the hull).
   for (const k of ws.keepout || []) for (let i = 0; i < n; i++) {
-    const hit = spatial ? segAABB3(pts[i], pts[i + 1], k.aabb) : segBox2(pts[i], pts[i + 1], k.box);
-    if (hit) return { hit: true, kind: 'keepout', detail: `link ${i} enters keep-out ${JSON.stringify(k.aabb || k.box)}` };
+    const hit = k.hull ? gjkDistance([pts[i], pts[i + 1]], k.hull) < radii[i]
+      : spatial ? segAABB3(pts[i], pts[i + 1], k.aabb) : segBox2(pts[i], pts[i + 1], k.box);
+    if (hit) return { hit: true, kind: 'keepout', detail: `link ${i} enters keep-out ${k.hull ? 'hull' : JSON.stringify(k.aabb || k.box)}` };
   }
   return { hit: false, kind: null, detail: 'clear' };
 }

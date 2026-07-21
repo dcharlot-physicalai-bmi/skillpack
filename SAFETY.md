@@ -44,7 +44,9 @@ collision-free config). This is a real, verified upgrade — but its scope is pr
   guarantee is available; robots without one get *no* collision guarantee (N2 stays out of scope for them),
   and `verify-collision.mjs` pins that.
 - The shipped geometry supports both a **2D planar** and a **3D spatial** (rotation-per-joint) chain, with
-  capsule links + AABB keep-outs. Real robots import via **URDF** (`urdf.mjs`, `skillpack import-urdf`),
+  capsule links + AABB **or arbitrary convex-hull** keep-outs (the latter via **GJK** distance, `gjk.mjs` —
+  correct on analytic cases and convex-only by design; a concave mesh must be decomposed into convex pieces).
+  Real robots import via **URDF** (`urdf.mjs`, `skillpack import-urdf`),
   which reads the kinematic chain (revolute/continuous joints, with **fixed joints merged** so tool mounts,
   sensor frames, and base offsets are preserved) + **primitive** collision geometry, and derives a
   conservative uniform capsule radius (errs toward flagging collisions). It is *not* a claim of full 3D
@@ -56,7 +58,8 @@ collision-free config). This is a real, verified upgrade — but its scope is pr
   unchanged for the 2D and 3D geometry models): `planPath` (RRT — a guaranteed-safe path) and `planOptimal`
   (RRT\* — asymptotically optimal, a substantially shorter path via best-parent selection + rewiring; more
   iterations → shorter, not a guarantee of the global optimum at finite iterations). Both are probabilistically
-  complete (a given seed may fail to find a path). Full 3D **mesh** collision remains future work.
+  complete (a given seed may fail to find a path). Convex geometry is handled (primitives + convex hulls via
+  GJK); a **concave mesh** must be pre-decomposed into convex pieces — automatic decomposition is future work.
 | **N3** | **Dynamic stability on hardware.** In-range, rate-capped commands are *kinematic* bounds; they are not a guarantee of dynamic stability, traction, or balance on a real body. | The runtime is not a dynamics model. | controller tuning + hardware commissioning + the sim eval |
 | **N4** | **Perception / sensor integrity.** A spoofed or wrong observation can make an honest policy choose a bad — but still in-range — action. The envelope bounds the *action*, not the *truth of the input*. | The envelope sees commands, not the world. | perception + sensor attestation |
 | **N5** | **Hard real-time timing.** The JS/Python runtimes give *logical* command bounds, not hard real-time deadlines. | Host runtimes aren't RTOSes. | the target's own control loop |
