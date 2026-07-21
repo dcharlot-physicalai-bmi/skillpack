@@ -285,6 +285,11 @@
       "label": "SO-101 (LeRobot)"
     },
     {
+      "name": "spatial-3r",
+      "path": "robots/spatial-3r.json",
+      "label": "Spatial 3R arm (didactic 3D geometry)"
+    },
+    {
       "name": "torque-arm",
       "path": "robots/torque-arm.json",
       "label": "Direct-drive arm (ODrive, torque)"

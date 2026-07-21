@@ -1,0 +1,25 @@
+{
+  "name": "Spatial 3R arm (didactic 3D geometry)",
+  "morphology": "arm",
+  "dof": 3,
+  "actuation": "position",
+  "sensors": ["proprioception", "target_pose"],
+  "control_rate_hz": 20,
+  "joint_ids": [1, 2, 3],
+  "driver": { "target": "feetech" },
+  "geometry": {
+    "kind": "spatial-serial",
+    "note": "An ILLUSTRATIVE 3D geometry model (capsule links, one rotation axis per joint) — not the DH parameters of any real robot. It exists so the collision + planning layers have a concrete 3D chain to reason about.",
+    "base": [0.0, 0.0, 0.0],
+    "joints": [
+      { "axis": [0, 0, 1], "link": [0.40, 0, 0], "radius": 0.05 },
+      { "axis": [0, 1, 0], "link": [0.35, 0, 0], "radius": 0.05 },
+      { "axis": [0, 1, 0], "link": [0.25, 0, 0], "radius": 0.04 }
+    ],
+    "joint_range_rad": [[-3.14159, 3.14159], [-2.61799, 2.61799], [-2.61799, 2.61799]],
+    "workspace": {
+      "floor_z": -0.05,
+      "keepout": [{ "aabb": [0.30, -0.20, 0.30, 0.70, 0.20, 0.70], "note": "a 3D fixture the arm must not enter" }]
+    }
+  }
+}
