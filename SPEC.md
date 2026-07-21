@@ -146,3 +146,24 @@ recomputes the digest, and **refuses to write anything to disk on a mismatch** (
 `--insecure`, loudly). `verify-integrity.mjs` proves both directions: the recorded digests match the files
 on disk, and any tamper — a loosened cap, a single flipped byte in any file — changes the digest and is
 caught before the code is ever run on a robot. This is subresource-integrity for robot skills.
+
+## The agentic layer — safety lives below the planner
+
+An AI planner turns a goal into an ordered sequence of skill invocations; the agent (`agent.mjs`,
+`planAndRun`) executes them on a robot. The planner is **untrusted** — it may be a rule-based stub, an LLM
+(`llmPlanner`), a hallucinating model, or a compromised one. Two guards, both in the runtime, make its
+authority safe:
+
+1. **Capability.** The planner only ever sees skills the robot can run (`catalogFor`), and every step is
+   re-checked with `matchRobot` before any motion — an unknown or incompatible skill is refused with
+   reasons, never executed.
+2. **The envelope.** Whatever target the planner asks for is executed through the safety-enveloped runtime,
+   so an insane target (`[99, -99, …]`) can only move the robot safely toward a clamped bound, rate-limited,
+   with an auditable trace.
+
+`verify-agent.mjs` proves it: a deterministic planner runs a multi-skill plan safely; an adversarial planner
+that proposes an incompatible skill, a hallucinated skill, and an out-of-range target has the first two
+refused before motion and the third bounded by the envelope; and even a *compromised* skill (hostile policy)
+in the plan stays inside the envelope. This is the thesis of agentic **physical** AI: the model's authority
+ends at "which skill, what target" — the runtime is the safety authority, so the guarantees hold for **any**
+planner, including ones not yet written.
