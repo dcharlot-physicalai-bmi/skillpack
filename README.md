@@ -5,7 +5,8 @@
 > **An open standard, Apache-2.0.** Spec: `SPEC.md` (v0.2) · schemas: `schema/` · **conformance battery
 > anyone can run to self-certify: `conformance/`** · **content integrity: every install is digest-verified
 > (`integrity.mjs`)** · governance & the path to a neutral foundation: `GOVERNANCE.md` · how to add a skill
-> or change the spec: `CONTRIBUTING.md` + `SEP/`.
+> or change the spec: `CONTRIBUTING.md` + `SEP/`. **Cross-language: a clean-room Python runtime (`py/`)
+> passes the same conformance battery and produces bit-identical safety trajectories to the JS runtime.**
 
 The open answer to the walled robot app store. A skill is **source you own** — a policy reference + a typed
 contract + a capability manifest + a safety envelope + an eval — that **installs, checks your robot's
