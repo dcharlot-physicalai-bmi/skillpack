@@ -44,6 +44,57 @@ function shortcut(robot, path, res, rnd) {
   return p;
 }
 
+// RRT* — an asymptotically-optimal planner. Same guarantees as planPath (every config + edge collision-
+// free), but it (a) chooses each new node's parent to minimize cost-to-come among nearby nodes, (b) rewires
+// nearby nodes through the new node when that is cheaper, and (c) keeps refining after the first solution.
+// The result is a SHORTER path than plain RRT; more iterations → shorter (asymptotic optimality), not a
+// guarantee of the global optimum at finite iterations. Deterministic (seeded), dimension-agnostic.
+export function planOptimal(robot, start, goal, opts = {}) {
+  const { seed = 1, maxIter = 3000, eps = 0.06, goalBias = 0.1, res = 0.02, tol = 0.04, neighborRadius = 0.2 } = opts;
+  if (!hasGeometry(robot)) return { found: false, reason: 'no geometry model — planning requires geometry', path: null };
+  if (collides(robot, start).hit) return { found: false, reason: 'start in collision', path: null };
+  if (collides(robot, goal).hit) return { found: false, reason: 'goal in collision', path: null };
+
+  const dof = start.length, rnd = mulberry32(seed);
+  const nodes = [{ q: start.slice(), parent: -1, cost: 0 }];
+  const sample = () => (rnd() < goalBias ? goal.slice() : Array.from({ length: dof }, () => rnd()));
+  const nearest = (q) => { let bi = 0, bd = Infinity; for (let i = 0; i < nodes.length; i++) { const d = dist(nodes[i].q, q); if (d < bd) { bd = d; bi = i; } } return bi; };
+  const nearby = (q, r) => { const out = []; for (let i = 0; i < nodes.length; i++) if (dist(nodes[i].q, q) <= r) out.push(i); return out; };
+  let goalIdx = -1;
+
+  for (let it = 0; it < maxIter; it++) {
+    const qr = sample(), ni = nearest(qr), qn = nodes[ni].q;
+    const d = dist(qn, qr), step = Math.min(1, eps / (d || 1));
+    const qnew = qn.map((v, i) => Math.max(0, Math.min(1, v + (qr[i] - v) * step)));
+    if (collides(robot, qnew).hit || !edgeClear(robot, qn, qnew, res)) continue;
+
+    // (a) choose the cheapest collision-free parent among nearby nodes
+    const nbrs = nearby(qnew, neighborRadius);
+    let bestParent = ni, bestCost = nodes[ni].cost + dist(qn, qnew);
+    for (const m of nbrs) { const c = nodes[m].cost + dist(nodes[m].q, qnew); if (c < bestCost && edgeClear(robot, nodes[m].q, qnew, res)) { bestCost = c; bestParent = m; } }
+    const idx = nodes.length;
+    nodes.push({ q: qnew, parent: bestParent, cost: bestCost });
+
+    // (b) rewire nearby nodes through qnew when cheaper
+    for (const m of nbrs) { const c = bestCost + dist(qnew, nodes[m].q); if (c < nodes[m].cost && edgeClear(robot, qnew, nodes[m].q, res)) { nodes[m].parent = idx; nodes[m].cost = c; } }
+
+    // (c) (re)connect the goal to the cheapest reaching node — keep improving after the first solution
+    if (dist(qnew, goal) < tol && edgeClear(robot, qnew, goal, res)) {
+      const gc = bestCost + dist(qnew, goal);
+      if (goalIdx < 0) { nodes.push({ q: goal.slice(), parent: idx, cost: gc }); goalIdx = nodes.length - 1; }
+      else if (gc < nodes[goalIdx].cost) { nodes[goalIdx].parent = idx; nodes[goalIdx].cost = gc; }
+    }
+  }
+  if (goalIdx < 0) return { found: false, reason: 'max iterations reached', path: null, nodes: nodes.length };
+
+  let path = [], i = goalIdx;
+  while (i >= 0) { path.push(nodes[i].q); i = nodes[i].parent; }
+  path.reverse();
+  const rawLength = pathLength(path);
+  const smoothed = shortcut(robot, path, res, rnd);
+  return { found: true, path: smoothed, rawPath: path, rawLength, cost: pathLength(smoothed), waypoints: smoothed.length, nodes: nodes.length };
+}
+
 // Plan a collision-free path from start to goal (normalized joint configs). Returns { found, path, ... }.
 export function planPath(robot, start, goal, opts = {}) {
   const { seed = 1, maxIter = 6000, eps = 0.05, goalBias = 0.1, res = 0.02, tol = 0.04 } = opts;
@@ -67,8 +118,9 @@ export function planPath(robot, start, goal, opts = {}) {
       let path = [], idx = nodes.length - 1;
       while (idx >= 0) { path.push(nodes[idx].q); idx = nodes[idx].parent; }
       path.reverse();
+      const rawLength = pathLength(path);
       const smoothed = shortcut(robot, path, res, rnd);
-      return { found: true, path: smoothed, rawWaypoints: path.length, waypoints: smoothed.length, nodes: nodes.length, iterations: it + 1 };
+      return { found: true, path: smoothed, rawWaypoints: path.length, rawLength, cost: pathLength(smoothed), waypoints: smoothed.length, nodes: nodes.length, iterations: it + 1 };
     }
   }
   return { found: false, reason: 'max iterations reached', path: null, nodes: nodes.length };
