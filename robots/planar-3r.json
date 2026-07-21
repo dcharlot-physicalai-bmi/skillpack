@@ -1,0 +1,25 @@
+{
+  "name": "Planar 3R arm (didactic geometry)",
+  "morphology": "arm",
+  "dof": 3,
+  "actuation": "position",
+  "sensors": ["proprioception", "target_pose"],
+  "control_rate_hz": 20,
+  "joint_ids": [1, 2, 3],
+  "driver": { "target": "feetech" },
+  "geometry": {
+    "kind": "planar-serial",
+    "note": "An ILLUSTRATIVE 2D geometry model — not the dimensions of any real robot. It exists so the collision layer has something concrete to check. Real robots supply their own measured geometry.",
+    "base": [0.0, 0.0],
+    "links": [
+      { "length": 0.40, "radius": 0.05 },
+      { "length": 0.35, "radius": 0.05 },
+      { "length": 0.25, "radius": 0.04 }
+    ],
+    "joint_range_rad": [[-3.14159, 3.14159], [-2.61799, 2.61799], [-2.61799, 2.61799]],
+    "workspace": {
+      "floor_y": -0.05,
+      "keepout": [{ "box": [0.55, 0.30, 0.85, 0.70], "note": "a fixture the arm must not enter" }]
+    }
+  }
+}

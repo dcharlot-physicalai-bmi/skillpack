@@ -270,6 +270,11 @@
       "label": "Hobby 4-DoF arm (Pololu Maestro)"
     },
     {
+      "name": "planar-3r",
+      "path": "robots/planar-3r.json",
+      "label": "Planar 3R arm (didactic geometry)"
+    },
+    {
       "name": "quadruped",
       "path": "robots/quadruped.json",
       "label": "Quadruped (Go2-class, 12-DoF)"

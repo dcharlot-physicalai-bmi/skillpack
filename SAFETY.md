@@ -31,7 +31,22 @@ These are **out of scope by design**. Stating them is not a weakness; conflating
 | # | NOT guaranteed | Why it's out of scope | The layer that owns it |
 |---|----------------|-----------------------|------------------------|
 | **N1** | **Task correctness.** A command can be perfectly in-range and rate-limited yet *wrong for the task*. The envelope does not know the goal. | The envelope bounds motion, not intent. | the planner + `eval` (and a human) |
-| **N2** | **Inter-joint / self-collision / workspace collision.** The envelope bounds each joint *independently*; it models no geometry, so it permits any in-range configuration, including colliding ones. | No kinematic/geometric model in the envelope. | a motion-planning / collision layer (not yet built — see roadmap) |
+| **N2** | **Inter-joint / self-collision / workspace collision** — *for robots without a geometry model.* The bare envelope bounds each joint independently and models no geometry, so on its own it permits any in-range configuration, including colliding ones. | No kinematic/geometric model in the envelope itself. | the optional collision layer below, when a geometry model is declared |
+
+### N2 — now an *optional* guard (`collision.mjs`)
+
+For a robot that declares a `geometry` model, the collision layer (`collision.mjs`) adds a **protective-stop
+guard** layered *on top of* the envelope: minimal forward kinematics + self-collision, floor, and keep-out
+checks. Before a command would enter a colliding configuration, the guard **halts** (holds the last
+collision-free config). This is a real, verified upgrade — but its scope is precise, and stated honestly:
+
+- It applies **only to robots that declare a geometry model**. `hasGeometry(robot)` reports whether the
+  guarantee is available; robots without one get *no* collision guarantee (N2 stays out of scope for them),
+  and `verify-collision.mjs` pins that.
+- The shipped geometry is a **2D planar model** on a didactic robot — enough to make the checks concrete and
+  verifiable, *not* a claim of full 3D mesh collision or a real robot's measured dimensions.
+- It is a **guard, not a planner**: it stops a colliding motion; it does not find a collision-free path
+  around the obstacle. That remains future work (a motion-planning layer).
 | **N3** | **Dynamic stability on hardware.** In-range, rate-capped commands are *kinematic* bounds; they are not a guarantee of dynamic stability, traction, or balance on a real body. | The runtime is not a dynamics model. | controller tuning + hardware commissioning + the sim eval |
 | **N4** | **Perception / sensor integrity.** A spoofed or wrong observation can make an honest policy choose a bad — but still in-range — action. The envelope bounds the *action*, not the *truth of the input*. | The envelope sees commands, not the world. | perception + sensor attestation |
 | **N5** | **Hard real-time timing.** The JS/Python runtimes give *logical* command bounds, not hard real-time deadlines. | Host runtimes aren't RTOSes. | the target's own control loop |
